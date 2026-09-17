@@ -1,0 +1,16 @@
+@import '@iamacalupuenzo-ui/comsatel-ds/styles.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-content);
+  font-size: var(--font-size-content-body);
+  line-height: var(--font-line-height-content-body);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--font-letter-spacing-content);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
