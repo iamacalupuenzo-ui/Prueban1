@@ -1,12 +1,18 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/auth/login.page').then((page) => page.LoginPage) },
+  { path: 'recuperar-contrasena', loadComponent: () => import('./features/auth/recover-password.page').then((page) => page.RecoverPasswordPage) },
+  { path: 'ayuda', loadComponent: () => import('./features/support/support.page').then((page) => page.SupportPage) },
   {
     path: '',
     loadComponent: () => import('./layout/operations-layout.component').then((component) => component.OperationsLayoutComponent),
+    canActivateChild: [authGuard],
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/fleet-dashboard/fleet-dashboard.page').then((page) => page.FleetDashboardPage) },
+      { path: 'capturas', loadComponent: () => import('./features/capture-orders/new-capture-order.page').then((page) => page.NewCaptureOrderPage) },
+      { path: 'ordenes/nueva-captura', pathMatch: 'full', redirectTo: 'capturas' },
       { path: 'mapa', loadComponent: () => import('./features/fleet-map/fleet-map.page').then((page) => page.FleetMapPage) },
       { path: 'flota/vehiculos', loadComponent: () => import('./features/feature-placeholder/feature-placeholder.page').then((page) => page.FeaturePlaceholderPage), data: { title: 'Vehículos', description: 'La gestión de unidades se habilitará cuando conectemos la fuente de telemetría.' } },
       { path: 'flota/conductores', loadComponent: () => import('./features/feature-placeholder/feature-placeholder.page').then((page) => page.FeaturePlaceholderPage), data: { title: 'Conductores', description: 'La gestión de conductores se habilitará en una siguiente fase de la operación.' } },

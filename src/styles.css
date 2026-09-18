@@ -14,3 +14,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Compatibilidad con Comsatel DS 0.2.2: sus popovers se portalizan a body y
+   conservan la capa dropdown aun cuando el disparador está dentro de un modal.
+   Elevamos el token público solo mientras existe un diálogo modal. La siguiente
+   versión del DS resuelve este contexto en Popover y permitirá retirar esto. */
+body:has([aria-modal="true"]) {
+  --elevation-z-index-dropdown: var(--elevation-z-index-overlay);
+}
