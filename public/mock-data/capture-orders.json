@@ -1,0 +1,768 @@
+[
+  {
+    "id": "CAP-0101",
+    "unitCode": "VHC-3001",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0201",
+    "receivedOn": "2026-09-18",
+    "createdAt": "18 sep. 2026, 08:00",
+    "status": "Registrada",
+    "auditTrail": [
+      {
+        "action": "Creación",
+        "at": "18 sep. 2026, 07:42",
+        "detail": "Orden registrada desde Centro de operaciones."
+      },
+      {
+        "action": "Edición",
+        "at": "18 sep. 2026, 08:00",
+        "detail": "Se corrigió el número de expediente antes de iniciar la atención."
+      }
+    ]
+  },
+  {
+    "id": "CAP-0102",
+    "unitCode": "TRK-3002",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0202",
+    "receivedOn": "2026-09-17",
+    "createdAt": "17 sep. 2026, 09:07",
+    "status": "En revisión",
+    "auditTrail": [
+      {
+        "action": "Creación",
+        "at": "17 sep. 2026, 08:28",
+        "detail": "Orden registrada a solicitud del cliente."
+      },
+      {
+        "action": "Cambio de estado",
+        "at": "17 sep. 2026, 09:07",
+        "detail": "Estado actualizado de Registrada a En revisión."
+      }
+    ]
+  },
+  {
+    "id": "CAP-0103",
+    "unitCode": "VAN-3003",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0203",
+    "receivedOn": "2026-09-16",
+    "createdAt": "16 sep. 2026, 10:14",
+    "status": "Con observación",
+    "auditTrail": [
+      {
+        "action": "Creación",
+        "at": "16 sep. 2026, 08:46",
+        "detail": "Orden registrada por Autoridad competente."
+      },
+      {
+        "action": "Cambio de estado",
+        "at": "16 sep. 2026, 09:16",
+        "detail": "Estado actualizado de Registrada a En revisión."
+      },
+      {
+        "action": "Edición",
+        "at": "16 sep. 2026, 09:42",
+        "detail": "Se adjuntó el sustento del expediente EXP-2026-0203."
+      },
+      {
+        "action": "Cambio de estado",
+        "at": "16 sep. 2026, 10:14",
+        "detail": "Estado actualizado de En revisión a Con observación: se requiere información adicional."
+      }
+    ]
+  },
+  {
+    "id": "CAP-0104",
+    "unitCode": "BUS-3004",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0204",
+    "receivedOn": "2026-09-15",
+    "createdAt": "15 sep. 2026, 11:21",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0105",
+    "unitCode": "VHC-3005",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0205",
+    "receivedOn": "2026-09-14",
+    "createdAt": "14 sep. 2026, 12:28",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0106",
+    "unitCode": "TRK-3006",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0206",
+    "receivedOn": "2026-09-13",
+    "createdAt": "13 sep. 2026, 13:35",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0107",
+    "unitCode": "VAN-3007",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0207",
+    "receivedOn": "2026-09-12",
+    "createdAt": "12 sep. 2026, 14:42",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0108",
+    "unitCode": "BUS-3008",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0208",
+    "receivedOn": "2026-09-11",
+    "createdAt": "11 sep. 2026, 15:49",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0109",
+    "unitCode": "VHC-3009",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0209",
+    "receivedOn": "2026-09-10",
+    "createdAt": "10 sep. 2026, 16:56",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0110",
+    "unitCode": "TRK-3010",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0210",
+    "receivedOn": "2026-09-09",
+    "createdAt": "9 sep. 2026, 17:03",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0111",
+    "unitCode": "VAN-3011",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0211",
+    "receivedOn": "2026-09-08",
+    "createdAt": "8 sep. 2026, 08:10",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0112",
+    "unitCode": "BUS-3012",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0212",
+    "receivedOn": "2026-09-07",
+    "createdAt": "7 sep. 2026, 09:17",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0113",
+    "unitCode": "VHC-3013",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0213",
+    "receivedOn": "2026-09-06",
+    "createdAt": "6 sep. 2026, 10:24",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0114",
+    "unitCode": "TRK-3014",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0214",
+    "receivedOn": "2026-09-05",
+    "createdAt": "5 sep. 2026, 11:31",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0115",
+    "unitCode": "VAN-3015",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0215",
+    "receivedOn": "2026-09-04",
+    "createdAt": "4 sep. 2026, 12:38",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0116",
+    "unitCode": "BUS-3016",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0216",
+    "receivedOn": "2026-09-03",
+    "createdAt": "3 sep. 2026, 13:45",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0117",
+    "unitCode": "VHC-3017",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0217",
+    "receivedOn": "2026-09-02",
+    "createdAt": "2 sep. 2026, 14:52",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0118",
+    "unitCode": "TRK-3018",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0218",
+    "receivedOn": "2026-09-01",
+    "createdAt": "1 sep. 2026, 15:59",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0119",
+    "unitCode": "VAN-3019",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0219",
+    "receivedOn": "2026-08-31",
+    "createdAt": "31 ago. 2026, 16:06",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0120",
+    "unitCode": "BUS-3020",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0220",
+    "receivedOn": "2026-08-30",
+    "createdAt": "30 ago. 2026, 17:13",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0121",
+    "unitCode": "VHC-3021",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0221",
+    "receivedOn": "2026-08-29",
+    "createdAt": "29 ago. 2026, 08:20",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0122",
+    "unitCode": "TRK-3022",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0222",
+    "receivedOn": "2026-08-28",
+    "createdAt": "28 ago. 2026, 09:27",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0123",
+    "unitCode": "VAN-3023",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0223",
+    "receivedOn": "2026-08-27",
+    "createdAt": "27 ago. 2026, 10:34",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0124",
+    "unitCode": "BUS-3024",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0224",
+    "receivedOn": "2026-08-26",
+    "createdAt": "26 ago. 2026, 11:41",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0125",
+    "unitCode": "VHC-3025",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0225",
+    "receivedOn": "2026-08-25",
+    "createdAt": "25 ago. 2026, 12:48",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0126",
+    "unitCode": "TRK-3026",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0226",
+    "receivedOn": "2026-08-24",
+    "createdAt": "24 ago. 2026, 13:55",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0127",
+    "unitCode": "VAN-3027",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0227",
+    "receivedOn": "2026-08-23",
+    "createdAt": "23 ago. 2026, 14:02",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0128",
+    "unitCode": "BUS-3028",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0228",
+    "receivedOn": "2026-08-22",
+    "createdAt": "22 ago. 2026, 15:09",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0129",
+    "unitCode": "VHC-3029",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0229",
+    "receivedOn": "2026-08-21",
+    "createdAt": "21 ago. 2026, 16:16",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0130",
+    "unitCode": "TRK-3030",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0230",
+    "receivedOn": "2026-08-20",
+    "createdAt": "20 ago. 2026, 17:23",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0131",
+    "unitCode": "VAN-3031",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0231",
+    "receivedOn": "2026-08-19",
+    "createdAt": "19 ago. 2026, 08:30",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0132",
+    "unitCode": "BUS-3032",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0232",
+    "receivedOn": "2026-08-18",
+    "createdAt": "18 ago. 2026, 09:37",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0133",
+    "unitCode": "VHC-3033",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0233",
+    "receivedOn": "2026-08-17",
+    "createdAt": "17 ago. 2026, 10:44",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0134",
+    "unitCode": "TRK-3034",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0234",
+    "receivedOn": "2026-08-16",
+    "createdAt": "16 ago. 2026, 11:51",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0135",
+    "unitCode": "VAN-3035",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0235",
+    "receivedOn": "2026-08-15",
+    "createdAt": "15 ago. 2026, 12:58",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0136",
+    "unitCode": "BUS-3036",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0236",
+    "receivedOn": "2026-08-14",
+    "createdAt": "14 ago. 2026, 13:05",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0137",
+    "unitCode": "VHC-3037",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0237",
+    "receivedOn": "2026-08-13",
+    "createdAt": "13 ago. 2026, 14:12",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0138",
+    "unitCode": "TRK-3038",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0238",
+    "receivedOn": "2026-08-12",
+    "createdAt": "12 ago. 2026, 15:19",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0139",
+    "unitCode": "VAN-3039",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0239",
+    "receivedOn": "2026-08-11",
+    "createdAt": "11 ago. 2026, 16:26",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0140",
+    "unitCode": "BUS-3040",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0240",
+    "receivedOn": "2026-08-10",
+    "createdAt": "10 ago. 2026, 17:33",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0141",
+    "unitCode": "VHC-3041",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0241",
+    "receivedOn": "2026-08-09",
+    "createdAt": "9 ago. 2026, 08:40",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0142",
+    "unitCode": "TRK-3042",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0242",
+    "receivedOn": "2026-08-08",
+    "createdAt": "8 ago. 2026, 09:47",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0143",
+    "unitCode": "VAN-3043",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0243",
+    "receivedOn": "2026-08-07",
+    "createdAt": "7 ago. 2026, 10:54",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0144",
+    "unitCode": "BUS-3044",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0244",
+    "receivedOn": "2026-08-06",
+    "createdAt": "6 ago. 2026, 11:01",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0145",
+    "unitCode": "VHC-3045",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0245",
+    "receivedOn": "2026-08-05",
+    "createdAt": "5 ago. 2026, 12:08",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0146",
+    "unitCode": "TRK-3046",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0246",
+    "receivedOn": "2026-08-04",
+    "createdAt": "4 ago. 2026, 13:15",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0147",
+    "unitCode": "VAN-3047",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0247",
+    "receivedOn": "2026-08-03",
+    "createdAt": "3 ago. 2026, 14:22",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0148",
+    "unitCode": "BUS-3048",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0248",
+    "receivedOn": "2026-08-02",
+    "createdAt": "2 ago. 2026, 15:29",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0149",
+    "unitCode": "VHC-3049",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0249",
+    "receivedOn": "2026-08-01",
+    "createdAt": "1 ago. 2026, 16:36",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0150",
+    "unitCode": "TRK-3050",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0250",
+    "receivedOn": "2026-07-31",
+    "createdAt": "31 jul. 2026, 17:43",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0151",
+    "unitCode": "VAN-3051",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0251",
+    "receivedOn": "2026-07-30",
+    "createdAt": "30 jul. 2026, 08:50",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0152",
+    "unitCode": "BUS-3052",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0252",
+    "receivedOn": "2026-07-29",
+    "createdAt": "29 jul. 2026, 09:57",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0153",
+    "unitCode": "VHC-3053",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0253",
+    "receivedOn": "2026-07-28",
+    "createdAt": "28 jul. 2026, 10:04",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0154",
+    "unitCode": "TRK-3054",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0254",
+    "receivedOn": "2026-07-27",
+    "createdAt": "27 jul. 2026, 11:11",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0155",
+    "unitCode": "VAN-3055",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0255",
+    "receivedOn": "2026-07-26",
+    "createdAt": "26 jul. 2026, 12:18",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0156",
+    "unitCode": "BUS-3056",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0256",
+    "receivedOn": "2026-07-25",
+    "createdAt": "25 jul. 2026, 13:25",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0157",
+    "unitCode": "VHC-3057",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0257",
+    "receivedOn": "2026-07-24",
+    "createdAt": "24 jul. 2026, 14:32",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0158",
+    "unitCode": "TRK-3058",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0258",
+    "receivedOn": "2026-07-23",
+    "createdAt": "23 jul. 2026, 15:39",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0159",
+    "unitCode": "VAN-3059",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0259",
+    "receivedOn": "2026-07-22",
+    "createdAt": "22 jul. 2026, 16:46",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0160",
+    "unitCode": "BUS-3060",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0260",
+    "receivedOn": "2026-07-21",
+    "createdAt": "21 jul. 2026, 17:53",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0161",
+    "unitCode": "VHC-3061",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0261",
+    "receivedOn": "2026-07-20",
+    "createdAt": "20 jul. 2026, 08:00",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0162",
+    "unitCode": "TRK-3062",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0262",
+    "receivedOn": "2026-07-19",
+    "createdAt": "19 jul. 2026, 09:07",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0163",
+    "unitCode": "VAN-3063",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0263",
+    "receivedOn": "2026-07-18",
+    "createdAt": "18 jul. 2026, 10:14",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0164",
+    "unitCode": "BUS-3064",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0264",
+    "receivedOn": "2026-07-17",
+    "createdAt": "17 jul. 2026, 11:21",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0165",
+    "unitCode": "VHC-3065",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0265",
+    "receivedOn": "2026-07-16",
+    "createdAt": "16 jul. 2026, 12:28",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0166",
+    "unitCode": "TRK-3066",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0266",
+    "receivedOn": "2026-07-15",
+    "createdAt": "15 jul. 2026, 13:35",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0167",
+    "unitCode": "VAN-3067",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0267",
+    "receivedOn": "2026-07-14",
+    "createdAt": "14 jul. 2026, 14:42",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0168",
+    "unitCode": "BUS-3068",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0268",
+    "receivedOn": "2026-07-13",
+    "createdAt": "13 jul. 2026, 15:49",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0169",
+    "unitCode": "VHC-3069",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0269",
+    "receivedOn": "2026-07-12",
+    "createdAt": "12 jul. 2026, 16:56",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0170",
+    "unitCode": "TRK-3070",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0270",
+    "receivedOn": "2026-07-11",
+    "createdAt": "11 jul. 2026, 17:03",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0171",
+    "unitCode": "VAN-3071",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0271",
+    "receivedOn": "2026-07-10",
+    "createdAt": "10 jul. 2026, 08:10",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0172",
+    "unitCode": "BUS-3072",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0272",
+    "receivedOn": "2026-07-09",
+    "createdAt": "9 jul. 2026, 09:17",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0173",
+    "unitCode": "VHC-3073",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0273",
+    "receivedOn": "2026-07-08",
+    "createdAt": "8 jul. 2026, 10:24",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0174",
+    "unitCode": "TRK-3074",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0274",
+    "receivedOn": "2026-07-07",
+    "createdAt": "7 jul. 2026, 11:31",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0175",
+    "unitCode": "VAN-3075",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0275",
+    "receivedOn": "2026-07-06",
+    "createdAt": "6 jul. 2026, 12:38",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0176",
+    "unitCode": "BUS-3076",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0276",
+    "receivedOn": "2026-07-05",
+    "createdAt": "5 jul. 2026, 13:45",
+    "status": "Cerrada"
+  },
+  {
+    "id": "CAP-0177",
+    "unitCode": "VHC-3077",
+    "source": "Centro de operaciones",
+    "caseNumber": "EXP-2026-0277",
+    "receivedOn": "2026-07-04",
+    "createdAt": "4 jul. 2026, 14:52",
+    "status": "Registrada"
+  },
+  {
+    "id": "CAP-0178",
+    "unitCode": "TRK-3078",
+    "source": "Cliente",
+    "caseNumber": "EXP-2026-0278",
+    "receivedOn": "2026-07-03",
+    "createdAt": "3 jul. 2026, 15:59",
+    "status": "En revisión"
+  },
+  {
+    "id": "CAP-0179",
+    "unitCode": "VAN-3079",
+    "source": "Autoridad competente",
+    "caseNumber": "EXP-2026-0279",
+    "receivedOn": "2026-07-02",
+    "createdAt": "2 jul. 2026, 16:06",
+    "status": "Con observación"
+  },
+  {
+    "id": "CAP-0180",
+    "unitCode": "BUS-3080",
+    "source": "Operación en campo",
+    "caseNumber": "EXP-2026-0280",
+    "receivedOn": "2026-07-01",
+    "createdAt": "1 jul. 2026, 17:13",
+    "status": "Cerrada"
+  }
+]

@@ -1,11 +1,10 @@
-import { NgStyle } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Button, CLocaterFlotasLogo, fieldLabelTypography, Input, PasswordInput, textStyle } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, CLocaterFlotasLogo, Input, PasswordInput } from '@iamacalupuenzo-ui/comsatel-ds';
 import { MockAuthService } from '../../core/auth/mock-auth.service';
 
 @Component({
-  imports: [Button, CLocaterFlotasLogo, Input, NgStyle, PasswordInput, RouterLink],
+  imports: [Button, CLocaterFlotasLogo, Input, PasswordInput, RouterLink],
   template: `
     <main class="login-layout" aria-labelledby="login-title">
       <section class="login-pane">
@@ -14,8 +13,8 @@ import { MockAuthService } from '../../core/auth/mock-auth.service';
           <div class="intro"><h1 id="login-title">Inicia sesión</h1><p>Ingresa para continuar con la operación de tu flota.</p></div>
           <form (submit)="signIn($event)" novalidate>
             @if (formMessage()) { <p class="form-message" role="alert">{{ formMessage() }}</p> }
-            <div class="form-field"><label for="email" [ngStyle]="fieldLabelStyle">Correo corporativo</label><cs-input id="email" name="email" type="email" autocomplete="email" fieldSize="lg" placeholder="nombre@empresa.com" [value]="email()" (valueChange)="setEmail($event)" [invalid]="emailError() !== ''" aria-errormessage="email-error" [required]="true" />@if (emailError()) { <p id="email-error" class="field-error">{{ emailError() }}</p> }</div>
-            <div class="form-field"><label for="password" [ngStyle]="fieldLabelStyle">Contraseña</label><cs-password-input id="password" name="password" autocomplete="current-password" fieldSize="lg" placeholder="Ingresa tu contraseña" [value]="password()" (valueChange)="setPassword($event)" [invalid]="passwordError() !== ''" aria-errormessage="password-error" [required]="true" />@if (passwordError()) { <p id="password-error" class="field-error">{{ passwordError() }}</p> }</div>
+            <div class="form-field"><label for="email">Correo corporativo</label><cs-input id="email" name="email" type="email" autocomplete="email" fieldSize="lg" placeholder="nombre@empresa.com" [value]="email()" (valueChange)="setEmail($event)" [invalid]="emailError() !== ''" aria-errormessage="email-error" [required]="true" />@if (emailError()) { <p id="email-error" class="field-error">{{ emailError() }}</p> }</div>
+            <div class="form-field"><label for="password">Contraseña</label><cs-password-input id="password" name="password" autocomplete="current-password" fieldSize="lg" placeholder="Ingresa tu contraseña" [value]="password()" (valueChange)="setPassword($event)" [invalid]="passwordError() !== ''" aria-errormessage="password-error" [required]="true" />@if (passwordError()) { <p id="password-error" class="field-error">{{ passwordError() }}</p> }</div>
             <a class="recovery-link" routerLink="/recuperar-contrasena">¿Olvidaste tu contraseña?</a>
             <cs-button variant="primary" size="lg" [fullWidth]="true" [loading]="loading()" (click)="signIn($event)">Ingresar</cs-button>
           </form>
@@ -49,7 +48,6 @@ import { MockAuthService } from '../../core/auth/mock-auth.service';
   `],
 })
 export class LoginPage {
-  protected readonly fieldLabelStyle = textStyle(fieldLabelTypography.lg, 'accent');
   protected readonly email = signal('');
   protected readonly password = signal('');
   protected readonly emailError = signal('');

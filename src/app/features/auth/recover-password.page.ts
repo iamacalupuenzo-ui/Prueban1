@@ -1,10 +1,9 @@
-import { NgStyle } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Button, fieldLabelTypography, Input, textStyle } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, Input } from '@iamacalupuenzo-ui/comsatel-ds';
 
 @Component({
-  imports: [Button, Input, NgStyle],
+  imports: [Button, Input],
   template: `
     <main class="recovery" aria-labelledby="recovery-title">
       <cs-button variant="secondary" size="md" (click)="backToLogin()">Volver al inicio de sesión</cs-button>
@@ -17,7 +16,7 @@ import { Button, fieldLabelTypography, Input, textStyle } from '@iamacalupuenzo-
         } @else {
           <form (submit)="request($event)" novalidate>
             <div class="form-field">
-              <label for="recovery-email" [ngStyle]="fieldLabelStyle">Correo corporativo</label>
+              <label for="recovery-email">Correo corporativo</label>
               <cs-input id="recovery-email" name="email" type="email" autocomplete="email" fieldSize="lg" placeholder="nombre.apellido@empresa.com" [value]="email()" (valueChange)="email.set($event)" [invalid]="error() !== ''" aria-errormessage="recovery-error" [required]="true" />
               @if (error()) { <p id="recovery-error" class="error">{{ error() }}</p> }
             </div>
@@ -39,7 +38,6 @@ import { Button, fieldLabelTypography, Input, textStyle } from '@iamacalupuenzo-
   `],
 })
 export class RecoverPasswordPage {
-  protected readonly fieldLabelStyle = textStyle(fieldLabelTypography.lg, 'accent');
   protected readonly email = signal('');
   protected readonly error = signal('');
   protected readonly sent = signal(false);

@@ -5,6 +5,7 @@ describe('MockAuthService', () => {
   let service: MockAuthService;
 
   beforeEach(() => {
+    window.sessionStorage.clear();
     TestBed.configureTestingModule({});
     service = TestBed.inject(MockAuthService);
   });

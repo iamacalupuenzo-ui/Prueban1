@@ -1,5 +1,89 @@
 @import '@iamacalupuenzo-ui/comsatel-ds/styles.css';
 
+/* Encabezados de datos: misma escala `content/note` de 12 px que sus filas.
+   Esta regla se retira cuando el consumidor actualice a la próxima versión
+   del DS, donde Table incorpora el mismo token en su fuente. */
+cs-table .cs-table__th.cs-table__th {
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+  color: var(--color-text-base-subtlest);
+}
+
+/* La paginación no debe recalcular las columnas a partir de las filas visibles. */
+cs-table .cs-table {
+  table-layout: fixed;
+}
+
+/* Prototipo de Capturas: mantiene las acciones disponibles al desplazar
+   horizontalmente una tabla angosta. Se reemplaza por una API de columna fija
+   cuando Table la publique. */
+.capture-orders-table .cs-table__th:last-child,
+.capture-orders-table .cs-table__td:last-child {
+  position: sticky;
+  right: 0;
+  isolation: isolate;
+  background-color: var(--elevation-surface-default);
+}
+
+.capture-orders-table .cs-table__th:last-child {
+  z-index: 2;
+}
+
+.capture-orders-table .cs-table__td:last-child {
+  z-index: 1;
+}
+
+.capture-orders-table .cs-table__row:hover .cs-table__td:last-child {
+  /* `--color-interaction-hovered` es rgba. Se compone una única vez sobre una
+     superficie opaca para conservar el tono de la fila y ocultar las celdas
+     que se desplazan por debajo de la columna fija. */
+  background-color: var(--elevation-surface-default);
+  background-image: linear-gradient(var(--color-interaction-hovered), var(--color-interaction-hovered));
+}
+
+.capture-orders-table .cs-table__row--highlighted .cs-table__td:last-child {
+  background-color: var(--color-background-brand-subtlest);
+  background-image: none;
+}
+
+/* Al pasar por el botón, el hover de la acción no debe crear un segundo
+   rectángulo claro sobre el hover de su propia fila. Conserva el color de la
+   fila y diferencia la acción mediante el color del icono. */
+.capture-orders-table .cs-table__row:hover .cs-table__td:last-child > cs-button > .cs-button--subtle:hover {
+  background-color: transparent;
+  color: var(--color-text-brand-default);
+}
+
+/* La tabla mide como mínimo 864 px. Solo cuando el contenedor es menor existe
+   desplazamiento horizontal: el degradado sustituye la línea vertical y marca
+   el borde de la columna fija sin fingir que la tabla es desplazable en ancho. */
+@container capture-orders-table-area (max-width: 863px) {
+  .capture-orders-table .cs-table__th:last-child::before,
+  .capture-orders-table .cs-table__td:last-child::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(var(--layout-gap-lg) * -1);
+    width: var(--layout-gap-lg);
+    background: linear-gradient(to left, color-mix(in srgb, var(--color-text-base-default) 8%, transparent), transparent);
+    content: '';
+    pointer-events: none;
+  }
+}
+
+/* El Drawer se porta a body. Esta excepción queda global y limitada al
+   selector de fuente de Capturas para conservar el label md en 13 px. */
+cs-select.capture-source-select .cs-select__label {
+  font-size: var(--font-size-content-ui) !important;
+  line-height: var(--font-line-height-content-ui) !important;
+}
+
+/* Compatibilidad temporal con Comsatel DS 0.2.2: el Modal se porta a body,
+   así que este selector debe ser global. Se retira al adoptar la versión que
+   preserva internamente el ancho de cs-button durante loading. */
+.capture-confirmation-modal .cs-modal__footer > cs-button:last-child {
+  min-inline-size: 136px;
+}
+
 * {
   box-sizing: border-box;
 }

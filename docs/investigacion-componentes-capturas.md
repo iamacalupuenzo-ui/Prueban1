@@ -34,6 +34,33 @@ Contexto: matriz y registro manual de capturas de flota.
 - Semántica ARIA de combobox/listbox, navegación con flechas, Enter, Escape y foco que no se pierda al elegir una opción.
 - Debe admitir resultados remotos o paginados, porque el catálogo real supera las mil unidades.
 
+### Cronología vertical de estados
+
+- Línea vertical sutil que conecta nodos para los hitos ya ocurridos, sin pasos futuros predefinidos.
+- El último nodo identifica el estado vigente; los anteriores permanecen neutrales.
+- La aplicación lo compone localmente para evaluar el flujo de Capturas. Solo se propone como componente de DS si se confirma su reutilización en otros dominios con ciclos de vida similares.
+- No representa auditoría de campos: muestra únicamente creación, transiciones de estado y anulación.
+
+### Acción de modal durante carga
+
+- `cs-button` conserva el espacio de su contenido proyectado mientras muestra el spinner de carga; por tanto, la acción de confirmación no cambia de ancho.
+- Capturas mantiene temporalmente un ancho mínimo global para su modal porque aún consume la versión publicada `0.2.2`; se retira cuando adopte la versión del DS que incluye la corrección.
+
+### Columna fija en tablas responsivas
+
+- `TableColumn` no publica una propiedad para fijar una columna al inicio o al final durante el desplazamiento horizontal.
+- Capturas mantiene temporalmente la última columna, `Acciones`, fija a la derecha mediante estilos locales limitados a esa tabla.
+- Propuesta de API para el DS: `sticky?: 'start' | 'end'` en `TableColumn`. Debe resolver encabezado, cuerpo, filas hover/resaltadas, fondo de la celda fija, separador visual, orden de apilamiento y navegación horizontal sin requerir selectores internos en cada consumidor.
+- Referencia de comportamiento: MUI Data Grid separa columnas fijadas con sombra cuando existe desplazamiento horizontal; permite elegir sombra, borde o ambos. En Capturas se usa solo un degradado de sombra, condicionado al ancho mínimo de 864 px de esta tabla, para evitar un indicador falso cuando no hay desborde. [MUI: Column pinning](https://mui.com/x/react-data-grid/column-pinning/)
+- `--color-interaction-hovered` es translúcido. Una celda fija debe conservar una superficie opaca para no revelar columnas desplazadas; para igualar el hover de la fila se compone una sola capa del token como imagen de fondo sobre esa superficie, sin aplicarlo como dos fondos superpuestos. El componente Table debe resolver esta composición cuando incorpore columnas fijas.
+
+### Navegación móvil del producto
+
+- El drawer móvil debe usar `cs-menu` en modo `expanded`: incluye etiquetas, grupos y subítems. El modo `rail` solo corresponde al sidenav de escritorio/tablet.
+- El estado de rail de `AppLayoutState` no se debe propagar al drawer móvil. El producto lo fuerza a `expanded` según el viewport y oculta el control de colapso dentro del drawer.
+- El logo se muestra una sola vez en el topnav móvil. El drawer inicia debajo de ese header, usa `--layout-sidenav-width-expanded` y no incluye la cabecera de escritorio duplicada. El backdrop comienza también debajo del topnav.
+- El trigger móvil se presenta como control de navegación por ícono, situado antes del logo dentro del header; conserva botón semántico, etiqueta accesible y foco visible. El drawer cerrado queda fuera de la navegación de teclado mediante `inert`.
+
 ## Pendientes de definición funcional
 
 - Validar con negocio si el número de expediente lo digita el operador, se genera automáticamente o ambos escenarios existen.
