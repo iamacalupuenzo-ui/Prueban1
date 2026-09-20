@@ -19,6 +19,29 @@ Contexto: matriz y registro manual de capturas de flota.
 - La fuente de la orden usa el `Select` público porque sus cuatro opciones son cortas y conocidas.
 - Los valores mostrados son contenido de demostración del flujo. La interfaz no comunica una integración pendiente al operador.
 
+### Jerarquía de acciones: registro, carga masiva y descarga
+
+- **Hecho verificado.** Un área de página debe exponer una sola acción primaria;
+  varias acciones primarias reducen la jerarquía y hacen más difícil identificar
+  el siguiente paso. [Atlassian: Button usage](https://atlassian.design/components/button/button-legacy/usage)
+- **Hecho verificado.** La barra de una tabla es el lugar para utilidades
+  globales del conjunto visible, entre ellas la exportación; las acciones que no
+  caben pueden agruparse en un menú. [Carbon: Data table toolbar](https://carbondesignsystem.com/components/data-table/usage/)
+- **Decisión.** `Registrar captura` se mantiene como única acción primaria del
+  encabezado. `Carga masiva de recuperos` se ubica inmediatamente a su izquierda
+  como botón secundario: es una vía alternativa para crear registros, no una
+  utilidad de la tabla ni una acción por fila.
+- **Decisión.** `Descargar` se ubica en una franja de utilidades asociada a la
+  tabla, alineada a la derecha y separada de los filtros. Abre un menú con los
+  formatos de exportación, en lugar de mostrar un botón por formato. La descarga
+  aplica los filtros y el orden actualmente activos; el menú debe indicar el
+  formato mediante verbos explícitos, por ejemplo `Descargar PDF` y
+  `Descargar Excel`.
+- **Pendiente funcional.** Confirmar el segundo formato de descarga antes de
+  implementarlo. Si es Excel, el copy será `Descargar Excel`; si se requiere
+  CSV u otro formato, se nombra de forma explícita. No se usa “Descargar por”,
+  porque no expresa el resultado de la acción.
+
 ## Propuesta para Comsatel DS
 
 ### `DatePicker` (solo fecha)
@@ -26,6 +49,12 @@ Contexto: matriz y registro manual de capturas de flota.
 - Campo compacto con ícono de calendario y selector emergente al activarlo.
 - Valor controlado en formato ISO, límites mínimo/máximo, fechas deshabilitadas, estados de validación y etiqueta equivalente a `Input` y `Select` en tamaño `md`.
 - Accesible con foco inicial, flechas, Enter, Escape, cierre al hacer clic fuera y anuncio del valor elegido.
+
+### Rango de fechas para filtros de tabla
+
+- El DS ya expone `Calendar` con `rangeSelected`, selección por dos clics, banda continua, límites y navegación de teclado. Capturas lo compone dentro del `Popover` público, con un trigger etiquetado como “Fecha de registro” y una acción de limpieza.
+- El primer clic deja un extremo pendiente y no modifica la tabla; el segundo completa el rango, lo ordena y filtra sobre la fecha de creación de la orden. No se filtra por la fecha de recepción declarada en el formulario.
+- `DateTimeRangePicker` no se utiliza porque además solicita una ventana horaria diaria. Es correcto para reportes que filtran también por hora; para Capturas agregaría una decisión que la persona usuaria no necesita.
 
 ### `Autocomplete` / `Combobox`
 

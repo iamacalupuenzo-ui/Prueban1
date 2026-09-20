@@ -38,7 +38,7 @@ export interface UnitOption {
           (keydown.arrowup)="moveActive($event, -1)" />
       </cs-input-group>
       @if (isOpen()) {
-        <div class="unit-options" [id]="listboxId" role="listbox" [attr.aria-label]="label">
+        <div class="unit-options" [id]="listboxId" role="listbox" [attr.aria-label]="label" (mousedown)="keepOpenOnPointerDown()">
           @if (results().length) {
             @for (option of results(); track option.code; let index = $index) {
               <button
@@ -68,13 +68,12 @@ export interface UnitOption {
     cs-input-group { width: 100%; }
     cs-input-group-addon { color: var(--color-text-base-subtlest); }
     .required-marker { margin-left: var(--layout-gap-2xs); color: var(--color-text-danger-default); }
-    .unit-options { position: absolute; z-index: 2; top: calc(100% + var(--layout-gap-xs)); right: 0; left: 0; max-height: 232px; overflow-y: auto; border: var(--layout-border-thin) solid var(--color-border-divider); border-radius: var(--radius-sm); background: var(--elevation-surface-default); box-shadow: var(--shadow-xl); }
+    .unit-options { position: absolute; z-index: 2; box-sizing: border-box; top: calc(100% + var(--layout-gap-xs)); right: 0; left: 0; max-height: 232px; overflow-y: auto; padding: var(--layout-padding-xs); border: var(--layout-border-thin) solid var(--color-border-divider); border-radius: var(--radius-md); background: var(--elevation-surface-default); box-shadow: var(--shadow-xl); }
     .unit-options p { margin: 0; padding: var(--layout-padding-md); color: var(--color-text-base-subtle); font-size: var(--font-size-content-note); line-height: var(--font-line-height-content-note); }
-    .unit-options button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; width: 100%; min-height: 33px; gap: var(--layout-gap-md); padding: var(--layout-padding-xs) var(--layout-padding-md); border: 0; border-bottom: var(--layout-border-thin) solid var(--color-border-divider); color: var(--color-text-base-default); background: var(--elevation-surface-default); font-family: var(--font-family-content); font-weight: var(--font-weight-regular); letter-spacing: var(--font-letter-spacing-content); text-align: left; cursor: pointer; }
-    .unit-options button:last-child { border-bottom: 0; }
-    .unit-options button.is-active { background: var(--color-background-brand-subtle); }
+    .unit-options button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; width: 100%; min-height: var(--layout-size-md); gap: var(--layout-gap-md); padding: var(--layout-padding-xs) var(--layout-padding-lg); border: 0; border-radius: var(--radius-sm); color: var(--color-text-base-default); background: transparent; font-family: var(--font-family-content); font-weight: var(--font-weight-regular); letter-spacing: var(--font-letter-spacing-content); text-align: left; cursor: pointer; }
+    .unit-options button:hover, .unit-options button.is-active, .unit-options button:focus-visible { outline: none; background: var(--color-background-neutral-subtle); }
     .unit-options strong { font-size: var(--font-size-content-ui); line-height: var(--font-line-height-content-ui); font-weight: var(--font-weight-accent); }
-    .unit-options span { overflow: hidden; color: var(--color-text-base-subtle); font-family: var(--font-family-content); font-size: var(--font-size-content-note); font-weight: var(--font-weight-regular); line-height: var(--font-line-height-content-note); letter-spacing: var(--font-letter-spacing-content); text-overflow: ellipsis; white-space: nowrap; }
+    .unit-options span { overflow: hidden; color: var(--color-text-base-subtle); font-family: var(--font-family-content); font-size: var(--font-size-content-ui); font-weight: var(--font-weight-regular); line-height: var(--font-line-height-content-ui); letter-spacing: var(--font-letter-spacing-content); text-overflow: ellipsis; white-space: nowrap; }
     .field-error { margin: 0; color: var(--color-text-danger-default); font-size: var(--font-size-content-note); line-height: var(--font-line-height-content-note); }
   `],
 })
@@ -92,6 +91,7 @@ export class UnitAutocompleteComponent implements OnChanges {
   protected readonly query = signal('');
   protected readonly activeIndex = signal(-1);
   private readonly isSearchOpen = signal(false);
+  private pointerDownWithinOptions = false;
   protected readonly results = computed(() => {
     const term = this.query().trim().toLocaleLowerCase();
     return this.options.filter((option) => !term || `${option.code} ${option.description}`.toLocaleLowerCase().includes(term));
@@ -116,7 +116,10 @@ export class UnitAutocompleteComponent implements OnChanges {
   }
 
   protected closeAfterBlur(): void {
-    window.setTimeout(() => this.isSearchOpen.set(false), 120);
+    window.setTimeout(() => {
+      if (!this.pointerDownWithinOptions) this.isSearchOpen.set(false);
+      this.pointerDownWithinOptions = false;
+    }, 120);
   }
 
   protected moveActive(event: Event, direction: 1 | -1): void {
@@ -130,6 +133,8 @@ export class UnitAutocompleteComponent implements OnChanges {
 
   protected activateOption(index: number): void { this.activeIndex.set(index); }
 
+  protected keepOpenOnPointerDown(): void { this.pointerDownWithinOptions = true; }
+
   protected selectActive(): void {
     if (!this.results().length) return;
     this.select(this.results()[this.activeIndex() < 0 ? 0 : this.activeIndex()]);
@@ -137,7 +142,9 @@ export class UnitAutocompleteComponent implements OnChanges {
 
   protected select(option: UnitOption | undefined, event?: MouseEvent): void {
     event?.preventDefault();
+    event?.stopPropagation();
     if (!option) return;
+    this.pointerDownWithinOptions = false;
     this.query.set(option.code);
     this.value = option.code;
     this.isSearchOpen.set(false);

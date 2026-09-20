@@ -13,10 +13,11 @@ import {
   ViewEncapsulation,
   signal,
 } from '@angular/core';
-import { Button, Icon } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, Icon, type IconName } from '@iamacalupuenzo-ui/comsatel-ds';
 
 export interface SideDrawerAction {
   label: string;
+  icon?: IconName;
   disabled?: boolean;
   loading?: boolean;
 }
@@ -47,7 +48,7 @@ let drawerId = 0;
           @if (primaryAction || secondaryAction) {
             <footer class="side-drawer__footer">
               @if (secondaryAction) { <cs-button variant="subtle" size="sm" [disabled]="secondaryAction.disabled ?? false" [loading]="secondaryAction.loading ?? false" (click)="secondaryActionClick.emit()">{{ secondaryAction.label }}</cs-button> }
-              @if (primaryAction) { <cs-button variant="primary" size="sm" [disabled]="primaryAction.disabled ?? false" [loading]="primaryAction.loading ?? false" (click)="primaryActionClick.emit()">{{ primaryAction.label }}</cs-button> }
+              @if (primaryAction) { <cs-button variant="primary" size="sm" [disabled]="primaryAction.disabled ?? false" [loading]="primaryAction.loading ?? false" (click)="primaryActionClick.emit()">@if (primaryAction.icon) { <cs-icon [name]="primaryAction.icon" [size]="16" aria-hidden="true" /> }{{ primaryAction.label }}</cs-button> }
             </footer>
           }
         </aside>
@@ -58,7 +59,7 @@ let drawerId = 0;
     :host { display: block; }
     .side-drawer__mask { position: fixed; inset: 0; background: var(--color-background-blanket-default); z-index: var(--elevation-z-index-modal); opacity: 0; transition: opacity var(--motion-duration-medium) var(--motion-easing-default); }
     .side-drawer__mask--visible { opacity: 1; }
-    .side-drawer { position: absolute; top: 0; right: 0; display: flex; flex-direction: column; width: 560px; max-width: 100%; height: 100dvh; overflow: hidden; border-top-left-radius: var(--radius-xl); border-bottom-left-radius: var(--radius-xl); background: var(--elevation-surface-overlay); box-shadow: var(--shadow-xl); outline: none; opacity: 0; transform: translateX(100%); transition: transform var(--motion-duration-medium) var(--motion-easing-default), opacity var(--motion-duration-medium) var(--motion-easing-default); }
+    .side-drawer { position: absolute; top: 0; right: 0; display: flex; flex-direction: column; width: 560px; max-width: 100%; height: 100dvh; overflow: hidden; background: var(--elevation-surface-overlay); box-shadow: var(--shadow-xl); outline: none; opacity: 0; transform: translateX(100%); transition: transform var(--motion-duration-medium) var(--motion-easing-default), opacity var(--motion-duration-medium) var(--motion-easing-default); }
     .side-drawer--visible { opacity: 1; transform: translateX(0); }
     .side-drawer__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--layout-gap-lg); padding: var(--layout-padding-2xl); border-bottom: var(--layout-border-thin) solid var(--color-border-neutral-subtle); }
     .side-drawer__header h2 { margin: 0; color: var(--color-text-base-boldest); font-family: var(--font-family-heading); font-size: var(--font-size-content-highlight); line-height: var(--font-line-height-content-highlight); font-weight: var(--font-weight-accent); }
