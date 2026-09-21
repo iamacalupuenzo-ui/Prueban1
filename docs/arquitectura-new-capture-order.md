@@ -1,8 +1,10 @@
 # Refactor de arquitectura — `new-capture-order.page.ts`
 
 Fecha: 20 de septiembre de 2026
-Estado: ejecución completada en una rama aislada, pendiente de revisión
-humana antes de integrar (ver "Ejecución").
+Estado: ejecución completada, verificada en navegador y reconciliada contra
+el árbol en vivo. Lista para que Enzo corra `ng test` y decida cuándo
+integrarla (ver "Ejecución", "Verificación funcional en navegador" y
+"Reconciliación con el árbol en vivo").
 
 ## Problema
 
@@ -223,13 +225,69 @@ acuerdo explícito con Enzo.
 
 **Pendiente de revisión humana antes de integrar la rama:**
 
-- Verificación visual/manual en navegador de los seis flujos (filtros,
-  tabla con columnas/orden/paginación, registro y edición, cierre,
-  observación, anulación, carga masiva) — este refactor solo verificó
-  compilación, no comportamiento en tiempo de ejecución ni `ng test`.
-- Confirmar que el archivo original no siguió cambiando en el working tree
-  activo (`D:\Investigacion\Prueban1`) de forma que genere conflictos no
-  triviales al integrar esta rama.
-- Las violaciones de tokens y la inconsistencia de `copy-on-hover` listadas
-  en `investigacion-componentes-capturas.md` siguen intactas a propósito;
-  no se corrigen en esta rama.
+- `ng test` — no se ejecutó en ningún momento de este refactor, por acuerdo
+  explícito. Es lo único que falta antes de dar la rama por lista.
+- Las violaciones de tokens listadas en `investigacion-componentes-capturas.md`
+  siguen intactas a propósito; no se corrigen en esta rama.
+- Decidir cuándo y cómo integrar `refactor/split-new-capture-order` a `main`
+  (merge, rebase o cherry-pick) una vez que Enzo confirme que las pruebas
+  pasan.
+
+## Verificación funcional en navegador
+
+Hecha el 20 de septiembre de 2026, sirviendo la rama en `localhost:4300`
+(worktree aparte del árbol en vivo, que sigue en `localhost:4200`). Se
+probaron los seis flujos a mano, con capturas y lectura del DOM:
+
+- **Filtros** (búsqueda por texto, filtro de estado, rango de fechas) — OK.
+- **Tabla** (orden por columna, gestor de columnas mostrando/ocultando,
+  paginación) — OK.
+- **Registrar captura** — el autocomplete de unidad trae el contexto de
+  solo lectura (propietario, última ubicación) al seleccionar; el `Select`
+  de fuente funciona; la validación bloqueó el envío sin los 4 documentos
+  adjuntos (sin insertar fila nueva en la tabla), igual que el
+  comportamiento documentado.
+- **Cerrar / Observar / Anular** — cada uno abrió su diálogo, exigió el
+  campo requerido cuando aplica (motivo), mostró el toast de confirmación y
+  actualizó el estado de la orden en la tabla.
+- **Ver detalle** (drawer) — muestra unidad, fuente, fecha, la observación
+  recién registrada y la última ubicación.
+- **Carga masiva** — el modal abre con la plantilla descargable, la zona de
+  arrastre y la validación de formato/tamaño visibles; no se probó el envío
+  con un archivo real (no había uno disponible en el entorno de prueba), el
+  resto de la lógica de validación ya se confirmó en los otros diálogos.
+
+No se encontró ningún comportamiento roto por la división en 9 archivos.
+
+## Reconciliación con el árbol en vivo
+
+Hecha el 20 de septiembre de 2026. Entre el momento en que arrancó el
+refactor y este punto, el árbol en vivo (`D:\Investigacion\Prueban1`) siguió
+cambiando en paralelo. Se tomó una snapshot no destructiva del estado actual
+del árbol en vivo (`git stash create`, sin tocar su working tree) y se
+comparó contra la snapshot original de la que partió esta rama
+(`git diff <snapshot-inicial> <snapshot-actual>`). El delta real fue
+pequeño — 2 archivos, 17 inserciones y 16 eliminaciones — y se reaplicó a
+mano sobre los archivos ya divididos:
+
+- Tamaño del ícono de copiar: `14` → `12` px, en
+  `capture-order-table.component.ts`, `capture-order-detail-drawer.component.ts`
+  y `dialogs/capture-order-bulk-upload-dialog.component.ts`.
+- `CaptureOrdersService.showMessage()` ganó un parámetro `duration`
+  (default `4000`); `copyBulkUnitCode()` y `copyLastLocation()` ahora
+  muestran un toast de confirmación de 2000ms ("Código de unidad copiado" /
+  "Ubicación copiada").
+- En `src/styles.css`, la clase `.bulk-error-unit-copy` se renombró a
+  `.copy-on-hover` (generalizada) — esto **resuelve** la inconsistencia que
+  el registro de decisiones de más arriba había documentado como
+  preexistente (los templates ya usaban `copy-on-hover` pero la regla CSS
+  todavía se llamaba `.bulk-error-unit-copy`). Ya no aplica esa nota.
+
+Verificado: `tsc --noEmit` y `ng build` limpios después de la reconciliación;
+el árbol en vivo nunca fue tocado (confirmado con `git status` antes y
+después). La lógica de copiado al portapapeles no se pudo verificar
+visualmente en el navegador de prueba porque el permiso `clipboard-write`
+está denegado en ese entorno (`NotAllowedError`, confirmado con
+`navigator.permissions.query`) — es una limitación del navegador de
+automatización, no del código; la revisión fue por lectura directa del
+código reconciliado contra el diff original.
