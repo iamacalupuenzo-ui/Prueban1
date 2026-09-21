@@ -14,6 +14,21 @@ cs-table .cs-table {
   table-layout: fixed;
 }
 
+/* La pista de desplazamiento forma parte de la superficie de la tabla; no
+   debe introducir una franja blanca al final de sus filas. */
+.capture-orders-table .cs-table__wrap {
+  scrollbar-color: var(--color-border-neutral-default) var(--elevation-surface-default);
+  scrollbar-width: thin;
+}
+.capture-orders-table .cs-table__wrap::-webkit-scrollbar-track {
+  background: var(--elevation-surface-default);
+}
+.capture-orders-table .cs-table__wrap::-webkit-scrollbar-thumb {
+  border: var(--layout-border-thick) solid var(--elevation-surface-default);
+  border-radius: var(--radius-full);
+  background: var(--color-border-neutral-default);
+}
+
 /* Prototipo de Capturas: mantiene las acciones disponibles al desplazar
    horizontalmente una tabla angosta. Se reemplaza por una API de columna fija
    cuando Table la publique. */
@@ -38,7 +53,10 @@ cs-table .cs-table {
      superficie opaca para conservar el tono de la fila y ocultar las celdas
      que se desplazan por debajo de la columna fija. */
   background-color: var(--elevation-surface-default);
-  background-image: linear-gradient(var(--color-interaction-hovered), var(--color-interaction-hovered));
+  background-image: linear-gradient(
+    var(--color-interaction-hovered),
+    var(--color-interaction-hovered)
+  );
 }
 
 .capture-orders-table .cs-table__row--highlighted .cs-table__td:last-child {
@@ -49,25 +67,41 @@ cs-table .cs-table {
 /* Al pasar por el botón, el hover de la acción no debe crear un segundo
    rectángulo claro sobre el hover de su propia fila. Conserva el color de la
    fila y diferencia la acción mediante el color del icono. */
-.capture-orders-table .cs-table__row:hover .cs-table__td:last-child > cs-button > .cs-button--subtle:hover {
+.capture-orders-table
+  .cs-table__row:hover
+  .cs-table__td:last-child
+  > cs-button
+  > .cs-button--subtle:hover {
   background-color: transparent;
   color: var(--color-text-brand-default);
 }
 
-/* La tabla mide como mínimo 864 px. Solo cuando el contenedor es menor existe
-   desplazamiento horizontal: el degradado sustituye la línea vertical y marca
-   el borde de la columna fija sin fingir que la tabla es desplazable en ancho. */
-@container capture-orders-table-area (max-width: 863px) {
-  .capture-orders-table .cs-table__th:last-child::before,
-  .capture-orders-table .cs-table__td:last-child::before {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: calc(var(--layout-gap-lg) * -1);
-    width: var(--layout-gap-lg);
-    background: linear-gradient(to left, color-mix(in srgb, var(--color-text-base-default) 8%, transparent), transparent);
-    content: '';
-    pointer-events: none;
-  }
+/* El degradado responde al desbordamiento medido, no al ancho del viewport.
+   Se muestra mientras queda contenido oculto hacia la izquierda de Acciones
+   y desaparece al llegar al final del scroll. */
+.table-area--actions-shadow .capture-orders-table .cs-table__th:last-child::before,
+.table-area--actions-shadow .capture-orders-table .cs-table__td:last-child::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--layout-gap-lg) * -1);
+  width: var(--layout-gap-lg);
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--color-text-base-default) 8%, transparent),
+    transparent
+  );
+  content: '';
+  pointer-events: none;
+}
+
+.capture-orders-table__unit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--layout-gap-xs);
+  white-space: nowrap;
+}
+.capture-orders-table__unit cs-icon {
+  color: var(--color-text-brand-default);
 }
 
 /* El Drawer se porta a body. Esta excepción queda global y limitada al
@@ -77,11 +111,71 @@ cs-select.capture-source-select .cs-select__label {
   line-height: var(--font-line-height-content-ui) !important;
 }
 
+/* Fuente es un dato requerido de selección única. El DS 0.2.2 siempre expone
+   una X en este caso; se oculta localmente para conservar la estructura del
+   campo. Para cambiar la fuente se elige otra opción del menú. */
+cs-select.capture-source-select .cs-select__clear {
+  display: none;
+}
+
+/* Compatibilidad temporal con Comsatel DS 0.2.2: ColumnManager conserva el
+   gap del campo aunque reciba label="". Al retirar la etiqueta vacía del
+   flujo flex, el contenedor y su trigger md comparten la altura de 32 px. */
+cs-column-manager.capture-column-manager .cs-input-dropdown__label:empty {
+  display: none;
+}
+
+/* ColumnManager 0.2.2 no expone la apariencia del texto del trigger. En esta
+   barra funciona como un selector sin label, por lo que replica el rol visual
+   del placeholder de Select md. */
+cs-column-manager.capture-column-manager .cs-input-dropdown__trigger {
+  color: var(--color-text-base-subtlest) !important;
+  font-family: var(--font-family-content);
+  font-size: var(--font-size-content-ui) !important;
+  line-height: var(--font-line-height-content-ui) !important;
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--font-letter-spacing-content);
+}
+
+/* Popover usa 8 px por defecto y ColumnManager no publica `offset`. Esta
+   compensación acotada deja el panel de administración a 4 px del trigger. */
+.cs-popover[aria-label='Administrar columnas'] {
+  margin-block-start: calc(var(--layout-gap-xs) * -1);
+}
+
+/* Las filas del gestor deben responder igual que las opciones de Select. Los
+   estados de arrastre conservan su tratamiento propio y tienen prioridad. */
+.cs-column-manager__row:hover:not(.cs-column-manager__row--dragging):not(
+    .cs-column-manager__row--drop-target
+  ) {
+  background-color: var(--color-background-neutral-subtlest-hover);
+}
+
+/* El calendario y su pie de acciones forman una sola superficie. El marco
+   vive en `.date-range-popover`; el Calendar interno conserva solo contenido. */
+#capture-date-range-calendar > cs-calendar {
+  display: block;
+}
+#capture-date-range-calendar > cs-calendar .cs-calendar {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 /* Compatibilidad temporal con Comsatel DS 0.2.2: el Modal se porta a body,
    así que este selector debe ser global. Se retira al adoptar la versión que
    preserva internamente el ancho de cs-button durante loading. */
 .capture-confirmation-modal .cs-modal__footer > cs-button:last-child {
   min-inline-size: 136px;
+}
+
+/* Variación temporal de Capturas sobre el contrato público del DS. Modal usa
+   `--elevation-surface-overlay` para su panel; se acota al flujo para conservar
+   inputs claros sobre el lienzo crema hasta que el componente publique una
+   propiedad de superficie equivalente a la del SideDrawer. */
+.capture-surface-modal {
+  --elevation-surface-overlay: #f8f5ed;
 }
 
 * {
@@ -99,10 +193,510 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Exploración visual del área autenticada: separa el lienzo crema de las
+   superficies interactivas, igualmente cálidas pero más claras. El override
+   alcanza también popovers y modales que el DS porta al body. */
+body:has(.operations-shell) {
+  --elevation-surface-default: #fcfaf4;
+}
+
 /* Compatibilidad con Comsatel DS 0.2.2: sus popovers se portalizan a body y
    conservan la capa dropdown aun cuando el disparador está dentro de un modal.
    Elevamos el token público solo mientras existe un diálogo modal. La siguiente
    versión del DS resuelve este contexto en Popover y permitirá retirar esto. */
-body:has([aria-modal="true"]) {
+body:has([aria-modal='true']) {
   --elevation-z-index-dropdown: var(--elevation-z-index-overlay);
+}
+
+/* Contexto recuperado de una unidad: no es un campo editable ni una tarjeta. */
+.selected-unit-summary {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) var(--layout-border-thin) minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  column-gap: var(--layout-gap-md);
+  padding-inline: var(--layout-padding-xs);
+  color: var(--color-text-base-subtle);
+}
+.selected-unit-summary > cs-icon {
+  flex: 0 0 auto;
+  color: var(--color-text-brand-default);
+}
+.selected-unit-summary__identity,
+.selected-unit-summary__location {
+  display: grid;
+  min-width: 0;
+  gap: var(--layout-gap-2xs);
+}
+.selected-unit-summary__divider {
+  align-self: stretch;
+  width: var(--layout-border-thin);
+  background: var(--color-border-divider);
+}
+.selected-unit-summary p,
+.selected-unit-summary span {
+  margin: 0;
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+.selected-unit-summary__identity span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap-sm);
+}
+.selected-unit-summary__location span {
+  overflow: hidden;
+  color: var(--color-text-base-default);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selected-unit-summary strong {
+  color: var(--color-text-base-default);
+  font-weight: var(--font-weight-accent);
+}
+
+@media (max-width: 480px) {
+  .selected-unit-summary {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--layout-gap-md);
+  }
+  .selected-unit-summary__divider {
+    display: none;
+  }
+  .selected-unit-summary__location {
+    grid-column: 1;
+  }
+}
+
+/* Composición local de Capturas mientras Comsatel DS no publique FileUpload.
+   Cada clase queda limitada a la sección de adjuntos del drawer. */
+.document-section {
+  display: grid;
+  gap: var(--layout-gap-lg);
+  margin-block-start: var(--layout-gap-md);
+}
+.document-section__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--layout-gap-md);
+}
+.document-section__copy {
+  display: grid;
+  gap: var(--layout-gap-xs);
+}
+.document-section h2 {
+  margin: 0;
+  color: var(--color-text-base-default);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-content-caption);
+  line-height: var(--font-line-height-content-caption);
+}
+.document-section__header p {
+  margin: 0;
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+.document-section__count {
+  flex: 0 0 auto;
+  padding: var(--layout-padding-2xs) var(--layout-padding-sm);
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  font-weight: var(--font-weight-accent);
+}
+.document-list {
+  display: grid;
+  gap: var(--layout-gap-sm);
+}
+.document-upload {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--layout-gap-md);
+  min-height: 66px;
+  padding: var(--layout-padding-md);
+  border: var(--layout-border-thin) solid var(--color-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--elevation-surface-default);
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.document-upload:hover {
+  border-color: var(--color-border-brand-default);
+  box-shadow: var(--shadow-sm);
+}
+.document-upload__icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #6b5940;
+}
+.document-upload--complete .document-upload__icon {
+  color: var(--color-text-success-default);
+}
+.document-upload__content {
+  min-width: 0;
+}
+.document-upload__content h3,
+.document-upload__content p {
+  margin: 0;
+}
+.document-upload__content h3 {
+  color: var(--color-text-base-default);
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+  font-weight: var(--font-weight-accent);
+}
+.document-upload__content p {
+  overflow: hidden;
+  margin-top: var(--layout-gap-2xs);
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.document-upload__file {
+  color: var(--color-text-base-default) !important;
+  font-weight: var(--font-weight-regular);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: var(--layout-border-thin);
+  text-underline-offset: var(--layout-gap-2xs);
+  transition: text-decoration-color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.document-upload__file:hover {
+  text-decoration-color: currentColor;
+}
+.document-upload__file span {
+  color: var(--color-text-base-subtle);
+  font-weight: var(--font-weight-regular);
+}
+.document-upload__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.document-upload__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--layout-gap-xs);
+}
+.document-upload__actions cs-button:last-child {
+  flex: 0 0 auto;
+}
+.document-upload__remove-icon {
+  color: var(--color-text-danger-default);
+}
+
+.details-content {
+  display: grid;
+  gap: var(--layout-gap-xl);
+  padding-block: var(--layout-padding-lg);
+}
+
+.detail-location__value div {
+  display: grid;
+  gap: var(--layout-gap-2xs);
+}
+.detail-data dt,
+.detail-location span {
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+.detail-section {
+  display: grid;
+  gap: var(--layout-gap-md);
+}
+.detail-section h3,
+.detail-actions h3,
+.status-timeline h3 {
+  margin: 0;
+  color: var(--color-text-base-default);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-content-caption);
+  line-height: var(--font-line-height-content-caption);
+}
+.detail-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--layout-gap-lg);
+  margin: 0;
+}
+.detail-data > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--layout-gap-xs);
+}
+.detail-data__full-width {
+  grid-column: 1/-1;
+}
+.detail-data dd {
+  margin: 0;
+  color: var(--color-text-base-default);
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+  font-weight: var(--font-weight-accent);
+}
+.detail-data__unit {
+  display: flex;
+  align-items: center;
+  gap: var(--layout-gap-xs);
+}
+.detail-data__unit cs-icon,
+.detail-location__value > cs-icon {
+  color: var(--color-text-brand-default);
+}
+.detail-location {
+  padding-block: var(--layout-padding-lg);
+  border-top: var(--layout-border-thin) solid var(--color-border-divider);
+}
+.detail-location__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--layout-gap-md);
+}
+.detail-location__history {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--layout-gap-xs);
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+  font-weight: var(--font-weight-accent);
+  transition: color 150ms ease;
+}
+.detail-location__history:hover {
+  color: var(--color-text-brand-default);
+}
+.detail-location__value {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--layout-gap-md);
+}
+.detail-location__value > cs-icon {
+  margin-top: var(--layout-padding-2xs);
+}
+.detail-location__address {
+  color: var(--color-text-base-default);
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+  font-weight: var(--font-weight-accent);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: var(--layout-border-thin);
+  text-underline-offset: var(--layout-gap-2xs);
+  transition: text-decoration-color 150ms ease;
+}
+.detail-location__address:hover {
+  text-decoration-color: currentColor;
+}
+.detail-actions {
+  display: grid;
+  gap: var(--layout-gap-md);
+  padding-block: var(--layout-padding-lg);
+  border-block: var(--layout-border-thin) solid var(--color-border-divider);
+}
+.detail-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap-md);
+}
+.detail-actions p {
+  margin: 0;
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+
+.bulk-upload-content,
+.bulk-upload-intro,
+.bulk-upload-review {
+  display: grid;
+  gap: var(--layout-gap-xl);
+}
+.bulk-upload-intro > p,
+.bulk-upload-review > p {
+  margin: 0;
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+}
+.bulk-template {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--layout-gap-lg);
+  padding: var(--layout-padding-lg);
+  border: var(--layout-border-thin) solid var(--color-border-neutral-subtle);
+  border-radius: var(--radius-md);
+}
+.bulk-template > div,
+.bulk-upload-state {
+  display: grid;
+  gap: var(--layout-gap-2xs);
+}
+.bulk-template span,
+.bulk-upload-state span {
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+.bulk-dropzone {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  row-gap: var(--layout-gap-xs);
+  width: 100%;
+  min-height: 160px;
+  padding: var(--layout-padding-2xl);
+  border: var(--layout-border-thin) dashed var(--color-border-neutral-default);
+  border-radius: var(--radius-lg);
+  background: var(--elevation-surface-default);
+  color: var(--color-text-base-default);
+  font-family: var(--font-family-content);
+}
+.bulk-dropzone > cs-button {
+  margin-top: var(--layout-gap-md);
+}
+.bulk-dropzone > span {
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+.bulk-upload-state {
+  justify-items: center;
+  padding: var(--layout-padding-5xl) var(--layout-padding-3xl);
+  color: var(--color-text-brand-default);
+  text-align: center;
+}
+.bulk-upload-state > strong {
+  color: var(--color-text-base-default);
+  font-size: var(--font-size-content-caption);
+  line-height: var(--font-line-height-content-caption);
+}
+.bulk-upload-state > cs-icon[name='loader'] { animation: bulk-upload-spin 0.8s linear infinite; }
+.bulk-upload-state--success { color: var(--color-text-success-default); }
+.bulk-upload-review__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap-xl);
+}
+.bulk-upload-review__summary > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--layout-gap-xs);
+  color: var(--color-text-success-default);
+}
+.bulk-upload-review__summary > div.is-rejected {
+  color: var(--color-text-danger-default);
+}
+.bulk-upload-review__summary strong {
+  font-size: var(--font-size-content-caption);
+  line-height: var(--font-line-height-content-caption);
+}
+.bulk-upload-review__summary span {
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+}
+.bulk-errors {
+  display: grid;
+  gap: var(--layout-gap-md);
+}
+.bulk-errors h3 {
+  margin: 0;
+  color: var(--color-text-base-default);
+  font-size: var(--font-size-content-ui);
+  line-height: var(--font-line-height-content-ui);
+}
+.bulk-errors__table-frame {
+  overflow: hidden;
+  border: var(--layout-border-thin) solid var(--color-border-neutral-subtle);
+  border-radius: var(--radius-md);
+  background: var(--elevation-surface-default);
+}
+.bulk-errors__table-frame .cs-table__wrap,
+.bulk-errors__table-frame .cs-table {
+  background: var(--elevation-surface-default);
+}
+.bulk-errors__table-frame .cs-table__row:last-child {
+  border-bottom: 0;
+}
+.copy-on-hover {
+  border-radius: var(--radius-xs);
+  color: inherit;
+  font: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: var(--layout-border-thin);
+  text-underline-offset: var(--layout-gap-2xs);
+  cursor: copy;
+  transition:
+    color var(--motion-duration-fast) var(--motion-easing-standard),
+    text-decoration-color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.copy-on-hover cs-icon {
+  display: none;
+  margin-inline-start: calc(var(--layout-gap-2xs) + 2px);
+  vertical-align: text-bottom;
+}
+.copy-on-hover:hover,
+.copy-on-hover:focus-visible {
+  color: var(--color-text-brand-default);
+  text-decoration-color: currentColor;
+}
+.copy-on-hover:hover cs-icon,
+.copy-on-hover:focus-visible cs-icon {
+  display: inline-block;
+}
+.copy-on-hover:focus-visible {
+  outline: var(--layout-border-thick) solid var(--color-border-brand-default);
+  outline-offset: var(--layout-padding-2xs);
+}
+.bulk-errors__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--layout-gap-md);
+  padding: var(--layout-padding-md) var(--layout-padding-lg);
+  border-top: var(--layout-border-thin) solid var(--color-border-divider);
+  color: var(--color-text-base-subtle);
+  font-size: var(--font-size-content-note);
+  line-height: var(--font-line-height-content-note);
+}
+@keyframes bulk-upload-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 767px) {
+  .document-section__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .document-section__count {
+    align-self: flex-start;
+  }
+  .document-upload {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .document-upload__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .detail-data {
+    grid-template-columns: 1fr;
+  }
+  .detail-data__full-width {
+    grid-column: auto;
+  }
 }
