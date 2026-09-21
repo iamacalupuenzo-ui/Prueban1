@@ -4,7 +4,6 @@ import {
   CaptureDocumentType,
   CaptureOrder,
   CaptureOrderAuditEntry,
-  CaptureOrderDocument,
   CaptureOrderDraft,
   MockCaptureOrdersService,
 } from '../../core/orders/mock-capture-orders.service';
@@ -1051,5 +1050,3 @@ const REQUIRED_DOCUMENT_TYPES: readonly CaptureDocumentType[] = [
   'transit-notification',
   'requisition',
 ];
-
-export type { CaptureOrderDocument };
