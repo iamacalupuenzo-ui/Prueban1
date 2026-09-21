@@ -225,13 +225,31 @@ acuerdo explícito con Enzo.
 
 **Pendiente de revisión humana antes de integrar la rama:**
 
-- `ng test` — no se ejecutó en ningún momento de este refactor, por acuerdo
-  explícito. Es lo único que falta antes de dar la rama por lista.
+- `ng test` — corrido por Enzo. Primer intento bloqueado por un fixture
+  desactualizado en `mock-capture-orders.service.spec.ts` (ver "Fixture de
+  prueba corregido" abajo); ya corregido, pendiente confirmar que el resto
+  de la suite pasa.
 - Las violaciones de tokens listadas en `investigacion-componentes-capturas.md`
   siguen intactas a propósito; no se corrigen en esta rama.
 - Decidir cuándo y cómo integrar `refactor/split-new-capture-order` a `main`
   (merge, rebase o cherry-pick) una vez que Enzo confirme que las pruebas
   pasan.
+
+## Fixture de prueba corregido (no relacionado al refactor)
+
+`ng test` falló al primer intento con `TS2345` en
+`src/app/core/orders/mock-capture-orders.service.spec.ts` (3 llamadas a
+`service.create()` sin el campo `documents`). Se verificó que este archivo
+es **idéntico** en `D:\Investigacion\Prueban1` y en este worktree — el
+refactor nunca lo tocó. La causa es anterior a todo el trabajo de esta
+sesión: `CaptureOrderDraft` ganó el campo obligatorio
+`documents: CaptureOrderDocument[]` (para el flujo de documentos de
+respaldo) en algún punto del trabajo en paralelo sobre el árbol en vivo,
+pero este spec nunca se actualizó con ese campo. `MockCaptureOrdersService.create()`
+no valida el contenido de `documents`, así que `documents: []` es un
+fixture válido que no cambia el resultado de ninguna prueba. Corregido solo
+en este worktree, no en `D:\Investigacion\Prueban1` (decisión de Enzo, para
+no tocar el árbol en vivo que sigue en edición).
 
 ## Verificación funcional en navegador
 
