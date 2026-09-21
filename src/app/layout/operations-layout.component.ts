@@ -303,33 +303,13 @@ export class OperationsLayoutComponent implements OnDestroy {
       items: [
         { label: 'Tablero', href: '/dashboard', icon: 'layout-dashboard' },
         { label: 'Explorar', href: '/mapa', icon: 'map' },
-        {
-          label: 'Flota',
-          href: '/flota',
-          icon: 'truck',
-          children: [
-            { label: 'Vehículos', href: '/flota/vehiculos' },
-            { label: 'Conductores', href: '/flota/conductores' },
-            { label: 'Asignaciones', href: '/flota/asignaciones' },
-          ],
-        },
-        { label: 'En vivo', href: '/en-vivo', icon: 'activity' },
-        {
-          label: 'Informes',
-          href: '/informes',
-          icon: 'file-text',
-          children: [
-            { label: 'Actividad', href: '/informes/actividad' },
-            { label: 'Histórico', href: '/informes/historico' },
-          ],
-        },
       ],
     },
     {
       header: 'Gestión',
       items: [
         { label: 'Capturas', href: '/capturas', icon: 'table-2' },
-        { label: 'Caminos', href: '/caminos', icon: 'route' },
+        { label: 'Recuperos', href: '/recuperos', icon: 'route' },
         { label: 'Geocercas', href: '/geocercas', icon: 'hexagon' },
         { label: 'Alertas', href: '/alertas', icon: 'bell' },
       ],

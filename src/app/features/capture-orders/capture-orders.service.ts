@@ -7,8 +7,8 @@ import {
   CaptureOrderDraft,
   MockCaptureOrdersService,
 } from '../../core/orders/mock-capture-orders.service';
-import { UnitOption } from './unit-autocomplete.component';
-import { UnitTypeFilterOption } from './unit-type-multi-select.component';
+import { UnitOption } from '../../shared/unit-autocomplete.component';
+import { UnitTypeFilterOption } from '../../shared/unit-type-multi-select.component';
 
 /**
  * Estado y orquestación de la pantalla de Capturas.

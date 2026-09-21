@@ -1,30 +1,60 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, HostListener, inject } from '@angular/core';
 import { FleetTelemetryService } from '../../core/fleet/fleet-telemetry.service';
+import { FleetMapCanvasComponent } from './fleet-map-canvas.component';
+import { FleetMapSearchComponent } from './fleet-map-search.component';
+import { FleetMapService } from './fleet-map.service';
 
 @Component({
-  imports: [RouterLink],
+  host: { class: 'fleet-map-page' },
+  imports: [FleetMapCanvasComponent, FleetMapSearchComponent],
+  providers: [FleetMapService],
   template: `
     <section class="fleet-map" aria-labelledby="map-title" [attr.aria-busy]="telemetry.state() === 'loading'">
-      <header class="page-heading"><p class="eyebrow">Operación</p><h1 id="map-title">Mapa</h1><p class="description">Localiza unidades y consulta siempre una alternativa de lista con la misma información.</p></header>
+      <header class="page-heading visually-hidden"><p class="eyebrow">Operación</p><h1 id="map-title">Mapa</h1><p class="description">Localiza unidades y consulta su última posición disponible.</p></header>
       @switch (telemetry.state()) {
-        @case ('loading') { <section class="map-surface" aria-label="Cargando ubicación de unidades"><div class="map-grid" aria-hidden="true"></div><p class="overlay" role="status">Cargando posiciones disponibles.</p></section> }
-        @case ('error') { <section class="map-surface" role="alert" aria-labelledby="map-error-title"><div class="map-grid" aria-hidden="true"></div><div class="overlay"><h2 id="map-error-title">No pudimos cargar el mapa</h2><p>La fuente de telemetría no respondió. Reintenta cuando recuperes conexión.</p><button type="button" (click)="telemetry.retry()">Reintentar</button></div></section> }
+        @case ('loading') { <section class="map-surface" aria-label="Cargando ubicación de unidades"><app-fleet-map-canvas /><p class="overlay" role="status">Cargando posiciones disponibles.</p></section> }
+        @case ('error') { <section class="map-surface" role="alert" aria-labelledby="map-error-title"><app-fleet-map-canvas /><div class="overlay"><h2 id="map-error-title">No pudimos cargar el mapa</h2><p>La fuente de telemetría no respondió. Reintenta cuando recuperes conexión.</p><button type="button" (click)="telemetry.retry()">Reintentar</button></div></section> }
         @case ('forbidden') { <section class="map-surface" aria-labelledby="map-permission-title"><div class="overlay"><h2 id="map-permission-title">No tienes permiso para ver ubicaciones</h2><p>Solicita acceso a un administrador de tu organización.</p></div></section> }
         @case ('ready') {
-          <section class="map-surface" aria-labelledby="map-ready-title"><div class="map-grid" aria-hidden="true"></div><div class="overlay"><h2 id="map-ready-title">Ubicaciones disponibles</h2><p>Última actualización: {{ telemetry.lastUpdated() }}.</p></div></section>
-          <section class="unit-list" aria-labelledby="unit-list-title"><h2 id="unit-list-title">Lista de unidades</h2><p>Alternativa al mapa con el mismo estado operativo.</p><ul>@for (unit of telemetry.units(); track unit.id) { <li><strong>{{ unit.name }}</strong><span>{{ unit.status }} · {{ unit.lastUpdate }}</span></li> }</ul></section>
+          <section class="map-surface" [attr.aria-label]="'Mapa con ' + state.filteredUnits().length + ' unidades ubicadas'">
+            <app-fleet-map-canvas [units]="state.filteredUnits()" />
+            <app-fleet-map-search />
+          </section>
         }
-        @default { <section class="map-surface" aria-labelledby="map-empty-title"><div class="map-grid" aria-hidden="true"></div><div class="overlay"><p class="eyebrow">Estado del mapa</p><h2 id="map-empty-title">Aún no hay unidades para ubicar</h2><p>No se muestran posiciones, rutas ni tiempos de actualización porque la integración cartográfica no está activa.</p><a routerLink="/dashboard">Volver al tablero</a></div></section> }
+        @default { <section class="map-surface" aria-label="Sin unidades ubicadas todavía"><app-fleet-map-canvas /></section> }
       }
     </section>
   `,
   styles: [`
-    :host { display: block; } .fleet-map { display: grid; gap: var(--layout-gap-2xl); padding: 32px; } .page-heading { display: grid; gap: var(--layout-gap-md); max-width: 640px; } h1, h2, p { margin: 0; } h1 { font-size: var(--font-size-display-sm); line-height: var(--font-line-height-display-sm); letter-spacing: var(--font-letter-spacing-display); } h2 { font-size: var(--font-size-heading-lg); line-height: var(--font-line-height-heading-lg); } .eyebrow { color: var(--color-text-brand-default); font-size: var(--font-size-content-caption); font-weight: var(--font-weight-semibold); line-height: var(--font-line-height-content-caption); text-transform: uppercase; letter-spacing: .08em; } .description, .overlay > p:not(.eyebrow), .unit-list > p { color: var(--color-text-base-subtle); }
-    .map-surface { display: grid; min-height: 480px; overflow: hidden; position: relative; border: 1px solid var(--color-border-base-subtle); border-radius: var(--border-radius-lg); background: var(--color-background-neutral-subtlest); } .map-grid { background-image: linear-gradient(var(--color-border-base-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-base-subtle) 1px, transparent 1px); background-position: center; background-size: 48px 48px; opacity: .34; } .overlay { align-self: center; justify-self: center; display: grid; gap: var(--layout-gap-lg); max-width: 480px; padding: 32px; position: absolute; text-align: center; } .overlay a, .overlay button { color: var(--color-text-brand-default); font: inherit; font-weight: var(--font-weight-semibold); justify-self: center; border: 0; background: transparent; text-decoration: underline; cursor: pointer; } .overlay a:focus-visible, .overlay button:focus-visible { outline: 2px solid var(--color-border-brand-bold); outline-offset: 3px; }
-    .unit-list { display: grid; gap: var(--layout-gap-md); max-width: 720px; } ul { display: grid; gap: var(--layout-gap-sm); margin: 0; padding: 0; list-style: none; } li { display: flex; justify-content: space-between; gap: var(--layout-gap-md); padding: var(--layout-padding-lg); border: 1px solid var(--color-border-base-subtle); border-radius: var(--border-radius-md); } li span { color: var(--color-text-base-subtle); } @media (max-width: 767px) { .fleet-map { gap: var(--layout-gap-xl); padding: 24px 20px; } .map-surface { min-height: 400px; } .overlay { padding: 24px; } li { align-items: flex-start; flex-direction: column; } }
+    :host { display: block; block-size: 100%; }
+    .fleet-map { position: relative; block-size: 100%; inline-size: 100%; overflow: hidden; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    h1, h2, p { margin: 0; }
+    .eyebrow { color: var(--color-text-brand-default); font-size: var(--font-size-content-caption); font-weight: var(--font-weight-emphasis); line-height: var(--font-line-height-content-caption); text-transform: uppercase; letter-spacing: .08em; }
+    .overlay > p:not(.eyebrow) { color: var(--color-text-base-subtle); }
+
+    /* Superficie operativa flotante: conserva una separación breve respecto
+       al lienzo de la aplicación y recorta los tiles de Leaflet al radio. */
+    .map-surface { position: absolute; inset: var(--layout-padding-md); overflow: hidden; background: var(--color-background-neutral-subtlest); border-radius: var(--radius-lg); }
+    app-fleet-map-canvas { position: absolute; inset: 0; }
+    .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; display: grid; gap: var(--layout-gap-lg); max-width: 480px; padding: var(--layout-padding-4xl); text-align: center; background: var(--color-background-base); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+    .overlay a, .overlay button { color: var(--color-text-brand-default); font: inherit; font-weight: var(--font-weight-emphasis); justify-self: center; border: 0; background: transparent; text-decoration: underline; cursor: pointer; }
+    .overlay a:focus-visible, .overlay button:focus-visible { outline: var(--layout-border-thick) solid var(--color-border-focused); outline-offset: 3px; }
+
   `],
 })
 export class FleetMapPage {
   protected readonly telemetry = inject(FleetTelemetryService);
+  protected readonly state = inject(FleetMapService);
+
+  // Cualquier clic fuera de la fila que selecciona una unidad (tarjeta del
+  // buscador o marcador del mapa) limpia la selección — buscador, filtros,
+  // lienzo vacío del mapa o cualquier otra parte de la página.
+  @HostListener('document:click', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.state.selectedUnitId()) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.vehicle-card__main, .leaflet-marker-icon')) return;
+    this.state.deselectUnit();
+  }
 }

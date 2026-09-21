@@ -1,0 +1,104 @@
+[
+  {
+    "id": "REC-0101",
+    "unitCode": "VHC-3001",
+    "sourceType": "aseguradora",
+    "sourceName": "Rímac Seguros",
+    "referenceNumber": "POL-2026-88301",
+    "contactName": "Milagros Del Águila",
+    "contactPhone": "01 411 1111",
+    "operationalNotes": "Coordinar con el asegurado para el traslado de la unidad al depósito autorizado.",
+    "evidence": [],
+    "createdAt": "18 sep. 2026, 08:15",
+    "status": "En gestión",
+    "auditTrail": [
+      { "action": "Creación", "at": "18 sep. 2026, 08:15", "detail": "Orden registrada desde Rímac Seguros." },
+      { "action": "Cambio de estado", "at": "19 sep. 2026, 09:40", "detail": "Estado actualizado de Registrado a En gestión." }
+    ]
+  },
+  {
+    "id": "REC-0102",
+    "unitCode": "TRK-3002",
+    "sourceType": "persona-natural",
+    "sourceName": "Jorge Cárdenas Salazar",
+    "referenceNumber": "EXP-2026-0342",
+    "contactName": "Jorge Cárdenas Salazar",
+    "contactPhone": "987 654 321",
+    "operationalNotes": "El propietario reportó la ubicación aproximada; confirmar con telemetría antes de coordinar el retiro.",
+    "evidence": [],
+    "createdAt": "17 sep. 2026, 09:07",
+    "status": "Registrado",
+    "auditTrail": [
+      { "action": "Creación", "at": "17 sep. 2026, 09:07", "detail": "Orden registrada a solicitud del propietario." }
+    ]
+  },
+  {
+    "id": "REC-0103",
+    "unitCode": "VAN-3003",
+    "sourceType": "aseguradora",
+    "sourceName": "Pacífico Seguros",
+    "referenceNumber": "POL-2026-77120",
+    "contactName": "Renzo Valdivia",
+    "contactPhone": "01 415 2222",
+    "recoveredAt": "2026-09-14",
+    "operationalNotes": "Unidad recuperada y verificada en depósito. Pendiente cierre administrativo.",
+    "evidence": [{ "fileName": "acta-recupero-VAN-3003.pdf", "fileSize": 482304 }],
+    "createdAt": "10 sep. 2026, 10:14",
+    "status": "Recuperado",
+    "auditTrail": [
+      { "action": "Creación", "at": "10 sep. 2026, 10:14", "detail": "Orden registrada desde Pacífico Seguros." },
+      { "action": "Cambio de estado", "at": "14 sep. 2026, 16:02", "detail": "Estado actualizado de En gestión a Recuperado." }
+    ]
+  },
+  {
+    "id": "REC-0104",
+    "unitCode": "BUS-3004",
+    "sourceType": "otra",
+    "sourceName": "Autoridad competente",
+    "referenceNumber": "OF-2026-0056",
+    "contactName": "Cap. Luis Mendoza",
+    "contactPhone": "01 418 3333",
+    "recoveredAt": "2026-09-07",
+    "operationalNotes": "Recupero derivado de un procedimiento administrativo. Expediente cerrado sin observaciones.",
+    "evidence": [{ "fileName": "resolucion-BUS-3004.pdf", "fileSize": 315120 }],
+    "createdAt": "05 sep. 2026, 11:21",
+    "status": "Cerrado",
+    "auditTrail": [
+      { "action": "Creación", "at": "05 sep. 2026, 11:21", "detail": "Orden registrada desde Autoridad competente." },
+      { "action": "Cambio de estado", "at": "08 sep. 2026, 09:00", "detail": "Estado actualizado de Recuperado a Cerrado." }
+    ]
+  },
+  {
+    "id": "REC-0105",
+    "unitCode": "MOT-3005",
+    "sourceType": "aseguradora",
+    "sourceName": "Mapfre Perú",
+    "referenceNumber": "POL-2026-91044",
+    "contactName": "Diana Rojas",
+    "contactPhone": "01 419 4444",
+    "operationalNotes": "El asegurado desistió del proceso; orden anulada a pedido de la aseguradora.",
+    "evidence": [],
+    "createdAt": "02 sep. 2026, 12:28",
+    "status": "Anulado",
+    "auditTrail": [
+      { "action": "Creación", "at": "02 sep. 2026, 12:28", "detail": "Orden registrada desde Mapfre Perú." },
+      { "action": "Cambio de estado", "at": "04 sep. 2026, 15:10", "detail": "Estado actualizado de Registrado a Anulado." }
+    ]
+  },
+  {
+    "id": "REC-0106",
+    "unitCode": "VHC-3009",
+    "sourceType": "persona-natural",
+    "sourceName": "Luis Ramos Effio",
+    "referenceNumber": "EXP-2026-0351",
+    "contactName": "Luis Ramos Effio",
+    "contactPhone": "976 543 210",
+    "operationalNotes": "Unidad sin GPS activo; se coordina con el propietario la última dirección conocida.",
+    "evidence": [],
+    "createdAt": "19 sep. 2026, 16:56",
+    "status": "Registrado",
+    "auditTrail": [
+      { "action": "Creación", "at": "19 sep. 2026, 16:56", "detail": "Orden registrada a solicitud del propietario." }
+    ]
+  }
+]

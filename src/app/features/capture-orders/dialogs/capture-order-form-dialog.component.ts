@@ -6,8 +6,8 @@ import {
 } from '../../../core/orders/mock-capture-orders.service';
 import { SideDrawerComponent } from '../../../shared/side-drawer.component';
 import { CaptureOrdersService, DraftField } from '../capture-orders.service';
-import { UnitAutocompleteComponent } from '../unit-autocomplete.component';
-import { UnitTypeMultiSelectComponent } from '../unit-type-multi-select.component';
+import { UnitAutocompleteComponent } from '../../../shared/unit-autocomplete.component';
+import { UnitTypeMultiSelectComponent } from '../../../shared/unit-type-multi-select.component';
 
 const DOCUMENT_DEFINITIONS: ReadonlyArray<{
   type: CaptureDocumentType;

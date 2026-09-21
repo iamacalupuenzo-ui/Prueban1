@@ -347,6 +347,615 @@ resolverse con un override.
   diga `"7 de 7 columnas visibles"`. Sin inconveniente en que el control se
   ensanche un poco para dar cabida a la palabra adicional.
 
+### Buscador flotante del mapa — ajustado al patrón de C-Locater
+
+- **Referencia auditada.** `FloatingMonitor.tsx` (C-Locater, producción) resuelve
+  el buscador flotante sobre el mapa con tres decisiones concretas: la píldora
+  colapsada usa un radio completo (`rounded-full`), el clic sobre la píldora
+  abre el panel y enfoca el campo automáticamente
+  (`setTimeout(() => inputRef.current?.focus(), 200)`), y el campo de texto no
+  tiene caja ni borde propios — es transparente y comparte tipografía con el
+  estado colapsado.
+- **Corregido en `fleet-map-search.component.ts`** usando solo API pública de
+  `comsatel-ds` 0.2.2, sin tocar internals:
+  - Radio: se separó el radio compartido de `.monitor`/`.collapsed-search`
+    (antes ambos usaban `--radius-md`). La píldora colapsada ahora usa
+    `--radius-full`; el panel expandido conserva `--radius-md`.
+  - Borde del campo: se dejó de envolver `cs-input-group-input` en
+    `cs-input-group`. El borde/fondo de la caja es propiedad exclusiva de
+    `cs-input-group` (`.cs-input-group{border:...;background:...}` en
+    `input-group.tsx`); `cs-input-group-input` ya se estiliza a sí mismo sin
+    borde (`border:none;background-color:transparent`) porque su tamaño real
+    lo fija con estilos en línea desde `INPUT_FIELD_TOKENS`, independientes
+    del contenedor. Es una recomposición pública, no un parche.
+  - Tipografía: el campo usaba `fieldSize="sm"`, que resuelve a
+    `--font-size-content-note` — más chico que el rótulo
+    `"Buscar N unidades..."` del estado colapsado, que usa
+    `--font-size-content-ui`. Se cambió a `fieldSize="md"`
+    (`INPUT_FIELD_TOKENS.md.fontSize === '--font-size-content-ui'`), que sí
+    coincide. Verificado en navegador: ambos estados miden `0.8125rem`.
+  - Auto-foco: se agregó `@ViewChild('searchInput', { read: ElementRef })`
+    sobre `cs-input-group-input` y, al abrir, `setTimeout(() =>
+    searchInputRef?.nativeElement.querySelector('input')?.focus())`. Se
+    necesita `read: ElementRef` porque el ref por defecto sobre un componente
+    Angular resuelve a la instancia de la clase, no al elemento nativo.
+    `queueMicrotask` no alcanza a esperar el pintado del signal `isOpen`;
+    `setTimeout` sí, igual que en la referencia de C-Locater.
+- **Brecha del DS — sin método público para enfocar `cs-input-group-input`.**
+  El componente no expone `focus()` ni ningún equivalente. Para enfocarlo
+  desde el consumidor hay que leer el código fuente instalado y replicar el
+  mismo patrón que usa `InputGroupAddon.onClick()` internamente
+  (`elementRef.nativeElement.querySelector('input')?.focus()`). Propuesta:
+  exponer un método público `focus()` en `InputGroupInput` (o aceptar un
+  `ElementRef` de `<input>` real vía `viewChild` con `exportAs`) para que los
+  consumidores no dependan de un detalle de implementación no documentado.
+- **Brecha de documentación — mapeo `fieldSize` → token tipográfico no está
+  en el contrato público.** `sm`/`md`/`lg` de `InputFieldSize` no dejan
+  intuir a qué rol tipográfico corresponde cada uno
+  (`sm→content-note`, `md→content-ui`, `lg→content-body`); asumir que
+  `sm` = texto chico llevó al error de tipografía que se corrigió hoy.
+  Propuesta: documentar esa tabla en el README público de `InputGroupInput`/
+  `Input`.
+- **Verificado y descartado — `cs-fleet-unit-list` NO es el componente para
+  esta fila.** Se leyó su implementación completa en el paquete instalado
+  (`FleetUnitList`, fesm2022, clase en torno a la línea 3899). Es un
+  acordeón (`cs-accordion`/`cs-accordion-item`) pensado para telemetría
+  expandible: ícono de vehículo fijo (`name="truck"` hardcodeado, no varía
+  por tipo), avatar cuadrado con esquinas redondeadas
+  (`border-radius:var(--radius-md)`, no círculo), fondo de marca plano
+  (no varía por estado), y al expandir muestra velocidad/batería/ubicación/
+  diagnóstico más un botón "Ver detalle". No hay tres-puntitos, no hay
+  ícono de GPS, y la forma del avatar no coincide con lo pedido. Se
+  descarta como candidato para esta fila; queda solo como nota de que
+  existe, por si en el futuro se necesita un panel de telemetría expandible
+  (caso de uso distinto al buscador flotante).
+
+### Avatar del vehículo — se dejó neutro para todos, el estado ya no vive ahí
+
+- Enzo notó que unos autos tenían aro y fondo azul y otros gris, y preguntó
+  por qué no eran todos iguales. Era un resto de la segunda corrección de
+  esta sección (cuando el estado todavía se comunicaba en el propio
+  avatar): `.vehicle-card__avatar--offline` seguía cambiando el aro/fondo/
+  ícono según `unit.status`. Con las dos insignias de estado ya
+  construidas (GPS y encendido), esa variación quedó redundante y
+  confusa — dos señales de color distintas (avatar + insignias) compitiendo
+  por decir lo mismo.
+- Se quitó el modificador `--offline` y el binding correspondiente en el
+  template. El avatar ahora es siempre neutro
+  (`--color-background-neutral-subtlest` / `--color-border-neutral-default` /
+  `--color-icon-neutral-default`) para las 5 unidades — solo identifica el
+  tipo de vehículo, no su estado. El estado vive exclusivamente en las
+  insignias (`.vehicle-card__gps`, `.vehicle-card__ignition`).
+- **Corrección — el pedido de 8px era el espacio avatar↔texto, no
+  título↔fecha.** Primer intento equivocado: cambié el `gap` vertical de
+  `.vehicle-card__body` (título/fecha) de 2px a 8px. Enzo aclaró con una
+  captura de DevTools que el 8px pedido era el espacio HORIZONTAL entre el
+  avatar circular y el bloque de texto (nombre/código/fecha), que estaba en
+  `--layout-gap-sm` (6px) dentro de `.vehicle-card__main`. Se revirtió
+  `.vehicle-card__body` a `--layout-gap-2xs` (2px, como estaba) y se
+  cambió el `gap` de `.vehicle-card__main` a `--layout-gap-md` (8px).
+  Verificado con `getBoundingClientRect()`: avatar→texto = 8px,
+  título→fecha = 2px.
+
+### Filtros del buscador (`Todos`/`Todos`) — la lista debe verse como `cs-select`
+
+- Enzo pidió mantener el disparador compacto (`filter-control`, el botón
+  "Todos ⌄") pero construir la lista que se abre igual que el `cs-select`
+  público del DS, no como un menú genérico — puntualmente notó que faltaba
+  el ícono de check en la opción seleccionada.
+- Se leyó la implementación real de `cs-select` en el paquete instalado
+  (clase `Select`, fesm2022 ~línea 4636) para copiar el patrón exacto en
+  vez de inventar uno parecido:
+  - Opción seleccionada: `cs-icon name="check"` al final de la fila,
+    color `--color-text-brand-bolder`, fondo `--color-background-brand-subtlest`,
+    `font-weight:var(--font-weight-emphasis)` (las no seleccionadas usan
+    `--font-weight-accent`).
+  - Hover (solo si no está seleccionada):
+    `--color-background-neutral-subtlest-hover`.
+  - Contenedor del menú: `background:var(--color-background-base)`,
+    `border-radius:var(--radius-lg)`, `box-shadow:var(--shadow-xl)`,
+    `border-color:var(--color-border-neutral-default)` — antes usaba
+    `--elevation-surface-default`/`--radius-md`/`--shadow-lg`, valores
+    parecidos pero no los que realmente usa `cs-select__menu`.
+  - `.filter-menu` de `fleet-map-search.component.ts` se actualizó con
+    estas clases (`filter-menu__label`, `filter-menu__check`) para
+    replicar 1:1 el `cs-select__option` real, en vez del popover genérico
+    que tenía antes. Verificado en navegador: al elegir "Todos" aparece el
+    check azul junto a la opción.
+- **Títulos de filtros ambiguos — corregido.** Enzo señaló dos problemas
+  de nomenclatura:
+  - El primer filtro decía "Todos"/"En ruta"/"Sin señal", pero el campo
+    que filtra (`FleetUnit.status`) siempre fue estado de señal GPS, no de
+    ruta/movimiento (ya se estableció esa distinción al construir las
+    insignias de GPS/encendido). "En ruta" se renombró a "Con señal" para
+    no mezclarlo con el estado de encendido del motor.
+  - Ambos catch-all decían el genérico "Todos", sin decir de qué. Se
+    reemplazó por "Todos los estados"/"Todas las unidades", igual al
+    patrón ya establecido en el toolbar de la matriz de Capturas
+    (`capture-order-toolbar.component.ts:51`, placeholder
+    `"Todos los estados"`) — no se inventó una redacción nueva.
+  - **Revertido.** El envoltorio a dos líneas sí resultó ser un problema
+    para Enzo ("demasiado grande"). Se revirtió el catch-all de ambos
+    filtros a "Todos" (una palabra, como estaba antes de este punto). Lo
+    que SÍ se mantiene es el renombre semántico "En ruta" → "Con señal" en
+    la opción de estado — ese cambio no era el que causaba el problema de
+    tamaño y sigue siendo correcto (el filtro es de señal GPS, no de
+    ruta). Los disparadores volvieron a una sola línea de 28px.
+
+### Chips de filtros activos — quitados, eran redundantes
+
+- Enzo notó que, al elegir "Camión" en el filtro de tipo, aparecía una
+  fila con un chip "Camión ✕" debajo de los disparadores — redundante,
+  porque el propio disparador ya cambia de "Todos" a "Camión" para
+  mostrar la selección activa. Se quitó `.monitor__chips`/`.filter-chip`
+  del template y sus estilos en `fleet-map-search.component.ts`. Los
+  disparadores siguen siendo la única fuente de verdad visual del filtro
+  activo (más el check dentro del menú al abrirlo).
+
+### Deseleccionar unidad al hacer clic fuera
+
+- Enzo notó que la unidad seleccionada (tarjeta resaltada en el buscador)
+  seguía marcada aunque hiciera clic en cualquier otro lugar — el mapa
+  vacío, los filtros, cualquier parte de la página. Solo cambiaba al
+  seleccionar otra unidad explícitamente.
+- Se agregó `FleetMapService.deselectUnit()` (mismo patrón que
+  `selectUnit()`/`clearFilters()`) y un `@HostListener('document:click')`
+  en `FleetMapPage` — mismo patrón `@HostListener` que ya usa
+  `side-drawer.component.ts` para `document:keydown`, no uno nuevo. La
+  regla: cualquier clic cuyo `event.target` no esté dentro de
+  `.vehicle-card__main` (la fila que selecciona en el buscador) ni de
+  `.leaflet-marker-icon` (clase que Leaflet agrega a todo marcador,
+  incluido el nuestro) limpia la selección.
+- Verificado en navegador: clic en el buscador → tarjeta queda resaltada;
+  clic en lienzo vacío del mapa → se limpia; clic (evento real,
+  disparado sobre el propio `.leaflet-marker-icon`) en un marcador →
+  selecciona y NO se autodeselecciona en el mismo clic, confirmando que
+  la excepción del listener funciona y no compite con el propio
+  `(click)="state.selectUnit(unit)"` del marcador.
+
+### Tarjeta de unidad del buscador — rediseño según referencia de producto
+
+- **Referencia auditada.** Tres capturas del sistema/producto de Enzo (no de
+  C-Locater) especifican la fila: avatar circular con fondo de color por
+  estado; código + nombre en la misma línea arriba; fecha completa con hora
+  abajo; chevron y botón de tres puntos a la derecha; ícono de GPS sobre el
+  avatar. La tarjeta anterior (cuadrado neutro, nombre/código apilados en
+  dos líneas, `cs-tag` de estado + hora corta a la derecha) fue señalada
+  explícitamente como lo que sobra.
+- **Construido en `fleet-map-search.component.ts` componiendo solo tokens y
+  `cs-icon` público, sin componente nuevo del DS:**
+  - Avatar circular (`--radius-full`) con `background: var(--color-map-vehicle-active)` / `var(--color-map-vehicle-offline)` — reutiliza los mismos tokens de estado ya establecidos en `fleet-map-canvas.component.ts` para los marcadores del mapa (mismo criterio, no uno nuevo).
+  - Ícono de GPS: `cs-icon name="satellite"`, como insignia circular en la
+    esquina del avatar (misma posición que `marker-pill__dot` en
+    `vehicle-pill.css` de Comsatel-DS-Angular). Es el mismo ícono que usan
+    `gps-compact` y `gps-full` en la página de referencia "Mapa /
+    Marcadores" del sistema de diseño — no se inventó un ícono nuevo.
+  - Código + nombre en una sola línea (`.vehicle-card__title`, `display:flex`
+    en vez de la grilla de dos filas anterior).
+  - Fecha completa: se cambió `FleetUnit.lastUpdate` de `'10:14'` (hora
+    suelta) a un datetime ISO completo en `fleet-telemetry.service.ts`, y se
+    formatea con `Intl.DateTimeFormat('es-PE', { dateStyle: 'medium',
+    timeStyle: 'short' })` — el mismo formateador que ya usaba
+    `fleet-telemetry.service.ts` para "Última actualización" en el
+    tablero, para no inventar un segundo formato de fecha en la misma app.
+  - Tres puntos: `cs-icon name="more-horizontal"` (el DS no publica un
+    ícono de "más" vertical, solo horizontal; confirmado en el registro de
+    íconos del paquete). Se rota 90° por CSS (`transform:rotate(90deg)`)
+    para que se vea vertical, que es lo pedido, sin inventar un ícono
+    nuevo. No tiene menú funcional todavía — es solo el affordance visual,
+    el contenido del menú queda pendiente de definición de producto. Se
+    quitó el chevron que había puesto en el primer intento: la fila no
+    necesita dos afordancias de "más" (chevron + tres puntos), solo una.
+  - Se quitó `<cs-tag>` de estado y la hora corta de la derecha (imagen
+    señalada por Enzo como lo que sobra); el estado ahora se comunica por
+    el color del avatar, no por una etiqueta de texto aparte.
+- **Corrección — el primer intento del avatar circular usaba relleno sólido
+  de color (`--color-map-vehicle-active`/`offline`, el mismo token de los
+  marcadores del mapa) y quedó "horrible" según Enzo.** El color sólido
+  reutiliza el vocabulario de los MARCADORES DEL MAPA, no el de la
+  aplicación consumidora; dentro de una lista, dijo, el ícono debe ir sobre
+  un fondo tenue (más claro que el crema del buscador), el ícono un poco
+  más grande, y el aro debe ser una línea azul — no relleno. Se corrigió
+  reutilizando el mismo patrón ya establecido en `cs-list-item__leading`
+  del propio DS (`background:var(--color-background-brand-subtlest)`,
+  `color:var(--color-icon-brand-default)`), sumado a un borde
+  (`border:1.5px solid var(--color-border-brand-default)`) para el aro
+  azul pedido. Variante `--offline` usa el mismo patrón con la familia
+  neutral (`--color-background-neutral-subtlest`,
+  `--color-border-neutral-default`, `--color-icon-neutral-default`) en vez
+  de inventar un segundo par de tokens. Ícono subido de 16px a 20px y
+  círculo de 36px a 40px.
+- **Corrección — el hover de la fila usaba el hover genérico de la DS, no
+  el de esta app.** Enzo señaló que FleetOperations ya tiene su propio
+  efecto hover establecido, visible en la sección "Documentos de respaldo"
+  del formulario de captura (`.document-upload:hover` en
+  `src/styles.css:333`): cambia `border-color` a
+  `var(--color-border-brand-default)` y agrega `box-shadow:var(--shadow-sm)`,
+  sin tocar el fondo. Se replicó ese mismo par de propiedades en
+  `.vehicle-card:has(.vehicle-card__main:hover)` en vez de el
+  `background-color` que se había usado antes — mismo tratamiento en las
+  dos superficies de la misma app.
+- **Corrección — fondo del panel no coincidía con el resto de "superficies
+  flotantes" de la app.** Enzo notó que el buscador tenía otro fondo de
+  color que el modal/drawer "Registrar captura". Medido en navegador:
+  - El drawer de "Registrar captura" (`app-side-drawer` con
+    `surface="canvas"`) renderiza `rgb(248, 245, 237)` = `#f8f5ed`,
+    hardcodeado en `side-drawer.component.ts:142`
+    (`.side-drawer--canvas{background:#f8f5ed}`). El mismo hex está
+    repetido en `operations-layout.component.ts:195` y
+    `new-capture-order.page.ts:109`.
+  - `.document-upload` (las tarjetas de "Documentos de respaldo") usa
+    `var(--elevation-surface-default)`, que esta app sobreescribe
+    globalmente a `#fcfaf4` (más claro que `#f8f5ed`) — confirmado
+    comparando el valor computado de la variable en `:root` (`#ffffff`,
+    el default del DS) contra el que realmente aplica en pantalla
+    (`#fcfaf4`).
+  - El `.monitor`/`.collapsed-search` del buscador usaba también
+    `var(--elevation-surface-default)` (`#fcfaf4`) — el mismo tono que las
+    tarjetas de documentos, no el del panel/drawer que lo contiene. Se
+    corrigió a `#f8f5ed`, igual que `side-drawer.component.ts`, para que
+    el panel flotante y el drawer compartan la misma superficie "canvas" y
+    las tarjetas (`.vehicle-card`, ya en `#fcfaf4`) queden un tono más
+    claras encima — la misma relación de capas que ya existe entre el
+    drawer y `.document-upload`.
+  - **Brecha real, no de esta pasada.** Existe `--elevation-surface-overlay`
+    público del DS (`#ffffff` claro / `#344054` oscuro en
+    `tokens.css`), y esta app ya lo re-define *localmente* a `#f8f5ed`
+    dentro de `.capture-surface-modal` (`styles.css:174-180`, con un
+    comentario que dice explícitamente que es "variación temporal... hasta
+    que el componente publique una propiedad de superficie equivalente a
+    la del SideDrawer"). Fuera de esa clase, la variable cae al blanco por
+    defecto del DS — por eso el buscador del mapa no podía simplemente
+    escribir `var(--elevation-surface-overlay)` y tuvo que repetir el hex,
+    como ya hacen los otros tres archivos. La brecha de fondo sigue siendo
+    la misma que ya identificó ese comentario: falta una propiedad de
+    superficie pública para "SideDrawer"/superficies canvas, en vez de
+    cuatro copias del mismo hex en cuatro archivos distintos.
+- **Bug real del DS — `--color-icon-brand-default` no existe.** Se copió de
+  `cs-list-item__leading` (`color:var(--color-icon-brand-default)`) para el
+  ícono del avatar, confiando en que era un token público válido porque el
+  propio DS lo usa. Verificado en navegador: la variable resuelve a cadena
+  vacía (`getComputedStyle(...).getPropertyValue('--color-icon-brand-default')
+  === ''`); no está definida en `tokens.css` ni en `styles.css` del paquete
+  instalado, en ningún modo. El ícono del avatar se veía gris neutro en vez
+  de azul aunque el borde sí tomaba `--color-border-brand-default`
+  correctamente. Es probable que `cs-list-item` tenga el mismo defecto
+  visual en cualquier consumidor. Se corrigió localmente usando
+  `var(--color-text-brand-default)` (sí definido, `#153565` claro /
+  `#3f7ad5` oscuro, ya usado en esta misma app en `fleet-map.page.ts`
+  `.eyebrow`). Propuesta para el DS: definir `--color-icon-brand-default`
+  en `tokens.css` (probablemente con el mismo valor de
+  `--color-text-brand-default`) o corregir `ListItem` para que use el
+  token que sí existe.
+- **Color de GPS — resuelto más simple de lo previsto: binario, no por
+  calidad de señal.** Se había registrado como brecha pendiente (tokens de
+  calidad de señal sin definir: sin señal/baja/media/alta). Enzo simplificó
+  el alcance: por ahora GPS solo necesita dos estados, igual que
+  encendido — verde si el vehículo tiene señal, gris si no. Como
+  `FleetUnit.status` (`'En ruta' | 'Sin señal'`) ya es exactamente ese
+  dato, no hizo falta agregar un campo nuevo: `.vehicle-card__gps` usa
+  `[class.vehicle-card__gps--on]="unit.status === 'En ruta'"`, con
+  `--color-map-vehicle-active` (verde) / `--color-map-vehicle-offline`
+  (gris, sin cambios respecto del estado por defecto). La brecha real de
+  tokens por calidad de señal (baja/media/alta) sigue sin resolverse, pero
+  queda fuera de alcance mientras el producto no la necesite — no bloqueó
+  esta iteración.
+- **Encendido del motor (Ignition On/Off) — nuevo, agregado hoy.** Es un
+  estado distinto al de señal GPS (`status`); antes no estaba en el modelo.
+  Se agregó `FleetUnit.ignition: 'on' | 'off'` en
+  `fleet-telemetry.service.ts` y una insignia en la esquina inferior
+  izquierda del avatar (espejo de la insignia de GPS en la esquina
+  superior derecha). El DS no publica un ícono de "encendido"; solo existe
+  `power-off`. Se usó `power-off` para apagado y `activity` (ya
+  establecido como ícono del estado `active` en `FleetUnitList` del propio
+  DS) para encendido — decisión de Enzo. Color: `on` reutiliza
+  `--color-text-success-default` (mismo verde que ya usa
+  `.document-upload--complete` en `styles.css`), `off` usa
+  `--color-text-base-subtlest`. Propuesta para el DS: publicar un ícono
+  dedicado de "encendido" (`power-on`/`zap`/`key`) en vez de reutilizar
+  `activity`, que ya tiene otro significado establecido (estado de
+  movimiento) en `FleetUnitList`.
+  - **Corrección de estilo — las insignias debían ir con relleno sólido,
+    no tenues.** Enzo aclaró que el tratamiento tenue (fondo crema + ícono
+    de color) que se usó primero para el avatar NO aplica a las insignias
+    pequeñas de GPS/encendido: esas van con círculo de relleno sólido e
+    ícono blanco. Se cambió `.vehicle-card__gps` y `.vehicle-card__ignition`
+    a `background:var(--color-map-vehicle-active)` (verde,
+    `--color-status-online`) / `var(--color-map-vehicle-offline)` (gris
+    `--color-status-offline`) con `color:var(--color-text-inverse)`
+    (blanco) — son los mismos tokens que ya se usan para los marcadores del
+    mapa en `fleet-map-canvas.component.ts`, reubicados de donde estaban
+    mal (el avatar) a donde sí correspondían (las insignias de estado).
+    La insignia de GPS por ahora usa el mismo gris sólido que "apagado"
+    como relleno provisional de forma/estilo, no una decisión de color por
+    calidad de señal — esa sigue pendiente como brecha del DS (ver arriba).
+  - **Ajuste — sin borde en las insignias.** Enzo pidió evaluar si el
+    borde de 2px alrededor de GPS/encendido era necesario; se comparó
+    contra la referencia real (`VehicleAccordionItem.tsx` de C-Locater,
+    que sí usa borde) y contra el patrón general del mercado (Fleetio,
+    Verizon Connect, Motive: el estado se lee pegado al ícono del
+    vehículo, coincide con mantenerlas sobre el avatar). La decisión fue
+    probar sin borde manteniendo el `box-shadow` — se ve más limpio y
+    sigue siendo legible por el contraste del relleno sólido. Se quitó
+    `border:2px solid var(--elevation-surface-default)` de ambas.
+  - **Ajuste — encendido apagado ahora es rojo, no gris.** Enzo corrigió:
+    el gris queda reservado para "sin dato/neutro" (como el badge de GPS,
+    todavía sin decidir), pero "apagado" del motor debe leerse como una
+    alerta, no como neutro. Se cambió `.vehicle-card__ignition` (estado
+    por defecto, apagado) a `var(--color-background-danger-default)`
+    (`#f63d68` claro / `#c01048` oscuro) en vez de
+    `--color-map-vehicle-offline`. `.vehicle-card__ignition--on` (verde)
+    no cambió. El badge de GPS se mantiene en gris neutro, sin relación
+    con este ajuste.
+  - **Pendiente de accesibilidad, no resuelto hoy.** Las dos insignias
+    (GPS y encendido) son `aria-hidden="true"` — decorativas. El estado de
+    encendido no se anuncia a lectores de pantalla porque no hay texto
+    visible equivalente en la fila, a diferencia del nombre/código/fecha.
+    Falta decidir cómo exponerlo (texto oculto visualmente, `aria-label`
+    del botón principal, o un tooltip accesible).
+  - **Nota aparte, no corregida hoy:** `.document-upload__icon` en
+    `src/styles.css:342` sigue usando el color hardcodeado `#6b5940` en su
+    estado por defecto — ya estaba señalado como brecha en este mismo
+    documento (sección "Color de ícono hardcodeado en `styles.css`"). No se
+    tocó porque no fue lo pedido en esta pasada, pero es la fuente que se
+    debe corregir antes de seguir replicando ese patrón de hover en más
+    lugares.
+- **Nota de estructura.** La tarjeta pasó de ser un solo `<button>` a un
+  `<div role="listitem">` con dos hijos: un `<button>` para
+  seleccionar/volar a la unidad (avatar + texto) y un `<button>` aparte
+  para el menú de tres puntos. Un `<button>` no puede anidar otro `<button>`
+  en HTML válido, y la fila necesita dos acciones independientes
+  (seleccionar unidad vs. abrir menú de la fila).
+- **Corregido — ícono nativo de "limpiar" duplicado en el buscador.**
+  `cs-input-group-input` con `type="search"` hace que Chrome/Edge agreguen
+  su propio ícono nativo de limpiar (✕) dentro del campo, además del botón
+  ✕ propio que ya construimos (`Limpiar búsqueda`) y el botón ✕ de contraer
+  el panel — quedaban tres ✕ visibles. Se cambió a `type="text"`: mismo
+  campo, mismo comportamiento, sin el ícono nativo duplicado. No se pierde
+  nada semántico relevante porque ya hay ícono de lupa + `aria-label`
+  explícito indicando que es un buscador.
+
+### Estilo de `cs-select` probado en los disparadores de filtro
+
+- Enzo pidió, a modo de prueba visual, aplicar el estilo real del
+  disparador de `cs-select` (`cs-select__trigger`: caja con borde,
+  fondo de campo, `radius-sm`) a los botones compactos `.filter-control`
+  ("Todos ⌄"), que antes eran transparentes y sin borde. Se copiaron
+  `border:var(--layout-border-thin) solid var(--color-border-neutral-default)`,
+  `background:var(--elevation-surface-default)` y `border-radius:var(--radius-sm)`
+  del `Select` real (fesm2022 ~línea 4636) en vez de aproximar valores. Sigue
+  pendiente de que Enzo confirme si se queda así o se revierte al estilo pill
+  sin borde.
+
+### Padding de `.vehicle-card` — 6px en vez de 12px
+
+- Enzo midió con DevTools y pidió 12px parejo en los cuatro lados. El
+  padding real (verificado por `getComputedStyle`) era 6px uniforme
+  (`--layout-padding-sm`), no asimétrico como parecía en la captura — se
+  cambió a `--layout-padding-lg` (12px), el paso exacto de la escala para
+  ese valor. Verificado: `padding-top/right/bottom/left` = 12px en los
+  cuatro lados.
+
+### Botón de tres puntos — agrandado
+
+- Enzo lo vio demasiado chico para leerse como una acción. Se aumentó el
+  ícono de 14px a 18px y el área del botón de un padding mínimo (~18px
+  efectivos) a un cuadrado fijo de `--layout-size-sm` (24px), el paso
+  correspondiente de la escala de tamaños del DS en vez de un valor suelto.
+
+### Altura de opción del filtro — 36px en vez de 32px
+
+- Enzo comparó contra el `cs-input-dropdown` de "Estado" en Capturas
+  (opción de 32px de alto) y notó que la nuestra medía 36px.
+- La causa: antes copié solo las reglas CSS estáticas de
+  `cs-select__option`, pero la altura real de `cs-select` no sale de ahí —
+  sale de estilos en línea atados a `INPUT_TOKENS[size]`
+  (`fesm2022...mjs:1126`), con `md = { height: 32, paddingX: 10,
+  fontSize: content-ui, lineHeight: content-ui }`. Al no copiar esa parte,
+  `.filter-menu button` quedaba con `padding:6px 8px` +
+  `line-height` de `content-note` (24px), sumando 36px en vez de 32.
+- Se corrigió a `block-size:32px`, `padding-inline:10px` (el DS usa ese
+  valor crudo, no un token, para `paddingX`), `font-size`/`line-height` de
+  `--font-size-content-ui`/`--font-line-height-content-ui` — igual al
+  tier `md` real. Verificado en navegador: 32px exactos.
+
+### Color de tipografía del disparador — no distinguía "Todos" de una selección real
+
+- Enzo comparó contra `cs-input-dropdown` de "Estado" en Capturas: ahí el
+  texto del disparador cambia de color entre el estado "Todos los
+  estados" (placeholder, texto tenue) y una opción real elegida (texto
+  oscuro). En nuestros filtros el cambio existía pero era casi
+  imperceptible.
+- Causa encontrada en el propio DS: `InputDropdown.textColor`
+  (`fesm2022...mjs:1791`) devuelve `--color-text-base-subtlest` cuando no
+  hay `selectedOption` y `--color-text-base-default` cuando sí. Y
+  `capture-orders.service.ts:305` hace que "Todos los estados" nunca
+  quede como `selectedOption` real: mapea el sentinel `'__all__'` de
+  vuelta a `''` (`this.statusFilter.set(value === '__all__' ? '' : value)`),
+  un valor que no calza con ninguna opción — así el disparador cae al
+  modo "placeholder" del componente aunque "Todos los estados" sí
+  aparezca marcado con check dentro del menú.
+- Nuestro `.filter-control` sí cambiaba de color con `[class.is-active]`,
+  pero usaba `--color-text-base-subtle` (`#667085`) para "Todos" en vez de
+  `--color-text-base-subtlest` (`#98a2b3`, el tono real que usa
+  `InputDropdown` para su estado placeholder) — muy cerca del tono
+  seleccionado (`--color-text-base-default`, `#344054`) para notarse.
+  Se corrigió a `--color-text-base-subtlest`. Verificado en navegador:
+  "Todos" = `rgb(152, 162, 179)`, "Camión" (seleccionado) =
+  `rgb(52, 64, 84)`.
+
+### Peso tipográfico del disparador — emphasis en vez de regular
+
+- Al medir el color en `cs-input-dropdown__value`/`__trigger` con un
+  inspector, Enzo notó que el peso también difiere: la referencia real
+  usa `Regular (400)` en ambos estados (solo cambia el color, nunca el
+  peso). `.filter-control` tenía `font-weight:var(--font-weight-emphasis)`
+  fijo en las dos variantes. Se cambió a `var(--font-weight-regular)`.
+  Verificado: `fontWeight` computado pasa de `600` a `400` en ambos
+  disparadores, con el color ya diferenciando "Todos" (tenue) de una
+  selección real (oscuro).
+
+### Disparadores de filtro a 50/50 del ancho disponible
+
+- Propuesta de Enzo: que "Estado" y "Tipo" repartan el espacio de la fila
+  en partes iguales en vez de encogerse a su contenido. Se agregó
+  `flex:1 1 0` a `.filter-control` dentro de `.monitor__filters` (antes
+  `inline-flex` sin crecer) y `justify-content:space-between` para que el
+  chevron quede pegado al borde derecho de cada mitad; el `<span>` del
+  label trunca con elipsis si el texto no cupiera. Verificado en
+  navegador: ambos disparadores miden 144px, exactamente la mitad del
+  espacio disponible de la fila.
+
+### Alineación y truncado del disparador — texto se separaba del ícono en vez de truncar
+
+- Al pasar `.filter-control` a `flex:1 1 0` para el 50/50, se le había
+  dejado `justify-content:space-between` con tres hijos (ícono, texto,
+  chevron): con tres elementos ese `space-between` reparte huecos
+  también entre ícono y texto, así que el texto "flotaba" hacia el centro
+  en vez de quedar pegado al ícono. Enzo lo notó y además pidió volver a
+  las etiquetas completas ("Todos los estados"/"Todas las unidades",
+  revertidas la vez anterior por el problema de ancho) ahora que el
+  control trunca con elipsis en una sola línea en vez de envolver — es el
+  patrón estándar para este tipo de componente.
+- Se quitó `justify-content:space-between` de `.filter-control` y se
+  agregó `margin-inline-start:auto` solo al ícono de chevron
+  (`.filter-control__chevron`): así únicamente el chevron se empuja al
+  extremo derecho, mientras ícono+texto conservan su `gap` natural y
+  quedan agrupados a la izquierda. El `<span>` ya tenía
+  `overflow:hidden;text-overflow:ellipsis;white-space:nowrap` desde el
+  ajuste del 50/50.
+- Se restauraron las etiquetas `'all'` a "Todos los estados"/"Todas las
+  unidades". Verificado en navegador: "Todos los estados" cabe completo
+  en 144px sin truncar; "Todas las unidades" sí desborda
+  (`scrollWidth > clientWidth`) y trunca con elipsis, ambos en una sola
+  línea de 28px de alto (sin envolver).
+
+### `.monitor__filters` se salía del panel — `min-width:auto` de grid item
+
+- Enzo notó que "Todas las unidades" salía del contenedor del buscador en
+  vez de quedarse truncado adentro. Medido: `.monitor` (panel, 306px) vs
+  `.monitor__filters` (306px + 10px de más, 316px) — el segundo disparador
+  llegaba a `right:567px`, 5px pasado el borde derecho del panel
+  (`562px`).
+- Causa: `.monitor__filters` es un ítem del grid implícito de `.monitor`
+  (`display:grid`), y por especificación CSS un ítem de grid tiene
+  `min-width:auto` por defecto — no se encoge más allá del tamaño mínimo
+  de su contenido aunque el contenedor sea más angosto, así que el track
+  del grid se expandía para darle espacio en vez de forzar el truncado en
+  los `.filter-control` de adentro. El `overflow:hidden` de `.monitor` no
+  alcanza a evitarlo porque el problema es el tamaño del track, no el
+  recorte visual.
+- Se agregó `min-inline-size:0` a `.monitor__filters`. Verificado: la fila
+  pasó a medir `304px` (dentro de los `306px` del panel) y ambos
+  disparadores quedan en `144px` exactos, sin pasarse del borde derecho.
+  Con el ancho ya correcto, "Todos los estados" también trunca por unos
+  pocos píxeles — la elipsis funcionando en ambos casos, no un problema
+  nuevo.
+
+### Bug real encontrado al construir Recuperos — también afecta a Capturas
+
+- **Síntoma.** Al registrar un recupero nuevo en vivo, la fila apareció al
+  final de la tabla en vez de arriba, a pesar de que el orden es "Registro,
+  descendente" y la orden recién creada debería ser la más reciente.
+- **Causa.** `registrationTimestamp()`/`registrationDate()` (copiadas 1:1 de
+  `CaptureOrdersService`) parsean el string de `createdAt` con una regex que
+  asume `sep.` como abreviatura de septiembre y hora de 24h con dos dígitos
+  (`08:15`) — el formato de los fixtures escritos a mano. Pero
+  `Intl.DateTimeFormat('es-PE', {dateStyle:'medium', timeStyle:'short'})`
+  (la función `timestamp()` real, usada al crear una orden en vivo) en este
+  entorno genera `set.` (no `sep.`) y hora de 12h con `a. m.`/`p. m.`
+  (verificado en navegador: `21 set. 2026, 3:35 a. m.`). La regex nunca
+  matchea ese formato real, así que toda orden creada en vivo cae al
+  fallback `return 0`, ordenando siempre al final sin importar qué tan
+  reciente sea.
+- **Corregido en `recoveries.service.ts`**: la regex ahora acepta `sep` y
+  `set` como abreviaturas de septiembre, hora de 1 o 2 dígitos y un sufijo
+  opcional `a. m.`/`p. m.` que se convierte a 24h antes de construir la
+  fecha. Verificado en navegador: una orden creada en vivo (`21 set. 2026,
+  3:38 a. m.`) ahora ordena correctamente por encima de los fixtures
+  (`19 sep. 2026, 16:56`).
+- **Mismo bug sigue presente en `CaptureOrdersService`** (código idéntico,
+  no tocado en esta pasada porque no fue lo pedido): cualquier captura
+  registrada en vivo hoy también caerá al final de la matriz en vez de
+  ordenarse por fecha real, y probablemente tampoco calce con filtros de
+  rango de fechas que dependan de `registrationDate()`. Requiere el mismo
+  fix aplicado aquí.
+
+## Mejoras aplicadas a Recuperos tras revisión de Enzo (21 de septiembre de 2026)
+
+### Corrección conceptual — un recupero no se registra ya recuperado
+
+Enzo corrigió el modelo: un recupero se registra para **monitorear** una
+unidad, no porque ya se haya recuperado. La fecha de recuperación no se pide
+al crear la orden — es consecuencia de un cambio de estado a "Recuperado"
+(fuera de alcance de esta pasada, matriz de estados pendiente de Producto).
+
+- **`mock-recovery-orders.service.ts`**: se quitó `recoveryDate` de
+  `RecoveryOrderDraft` (ya no se pide en el formulario) y se agregó
+  `recoveredAt?: string` **solo en `RecoveryOrder`**, opcional, para
+  cuando ese cambio de estado exista.
+- **Fixtures** (`recovery-orders.json`): `recoveredAt` solo está presente en
+  REC-0103 (Recuperado) y REC-0104 (Cerrado, que pasó por Recuperado antes).
+  El resto (Registrado/En gestión/Anulado) no lo tiene.
+- **`recoveries.service.ts`**: nuevo helper `recoveredLabel(order)` —
+  devuelve la fecha formateada si existe, o `"Pendiente de recuperar"` si
+  no. Lo consumen la tabla y el detalle.
+- **Diálogos de crear/editar**: se quitó el campo "Fecha del recupero"
+  por completo.
+- **Tabla**: columna renombrada de "Fecha del recupero" a "Fecha de
+  recuperación", ahora muestra `state.recoveredLabel(order)` en vez de una
+  fecha siempre presente.
+- El filtro de rango de fechas del toolbar (que en realidad filtra por
+  `createdAt`/fecha de registro, igual que en Capturas) tenía la etiqueta
+  "Fecha del recupero" — confuso ahora que existe una fecha de recuperación
+  distinta. Se renombró a "Fecha de registro", igual que en Capturas.
+
+### Tipo de unidad junto al buscador — faltaba en el formulario
+
+Enzo señaló que el formulario de registro/edición debía tener el mismo
+selector de "Tipo de unidad" que Capturas, ubicado junto al buscador de
+código de unidad (el patrón `unit-selection-grid` de
+`capture-order-form-dialog.component.ts`).
+
+- Se movió `UnitTypeMultiSelectComponent` de `capture-orders/` a
+  `shared/` (igual que ya se hizo antes con `UnitAutocompleteComponent`):
+  es genérico, sin acoplamiento a Capturas, y ahora lo usan dos features.
+  Se actualizaron los imports en Capturas.
+- `recoveries.service.ts` ganó su propio `RECOVERY_UNIT_TYPE_OPTIONS`
+  (VHC/TRK/VAN/BUS + **Moto**, que Capturas no tiene — los fixtures de
+  Recuperos sí incluyen unidades `MOT-*`), `unitTypeFilter` signal,
+  `setUnitTypeFilter()` y `unitTypeOf()`, mismo patrón que
+  `CaptureOrdersService` pero con su propio catálogo — no se importó el de
+  Capturas.
+- Ambos diálogos (`recovery-create-dialog`, `recovery-edit-dialog`) ganaron
+  el bloque `.unit-selection-grid` (`app-unit-type-multi-select` +
+  `app-unit-autocomplete`, 180px + 1fr, igual que Capturas).
+
+### Aseguradora auto-sugerida al elegir la unidad, editable
+
+Enzo: "al seleccionar la unidad automáticamente se me trae la aseguradora...
+y la aseguradora me permite editar". Se agregó `insurer: string` a la
+fixture de unidad (`RecoveryUnitFixture`) y `onUnitSelected()` ahora
+también fija `sourceType: 'aseguradora'` y `sourceName: unit.insurer` al
+elegir una unidad — sigue siendo un `cs-input` normal, completamente
+editable después. Verificado en navegador: elegir TRK-3002 completa
+"Nombre de la fuente" con "Pacífico Seguros" automáticamente.
+
+### Sin el botón "Limpiar" (X) en "Fuente del recupero"
+
+Mismo patrón ya documentado para Capturas
+("Texto del disparador..." → sección `Select` de selección única): el
+`cs-select` de fuente es obligatorio y de selección única, así que no debe
+tener una X para "vaciarlo" — para cambiarlo se elige otra opción. Se
+agregó la clase `recovery-source-select` al `cs-select` de ambos diálogos y
+la regla global correspondiente en `styles.css`
+(`cs-select.recovery-source-select .cs-select__clear{display:none}`),
+calcada 1:1 de `cs-select.capture-source-select` — no se repitió el
+override de `.cs-select__label` que sí tiene Capturas, porque ese ya está
+señalado en este mismo documento como una corrección basada en una premisa
+falsa (brecha "Rol tipográfico equivocado en labels externos de campo
+`md`"), no un patrón a replicar.
+
 ## Pendientes de definición funcional
 
 - Validar con negocio si el número de expediente lo digita el operador, se genera automáticamente o ambos escenarios existen.

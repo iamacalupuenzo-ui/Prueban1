@@ -1,4 +1,5 @@
 @import '@iamacalupuenzo-ui/comsatel-ds/styles.css';
+@import 'leaflet/dist/leaflet.css';
 
 /* Encabezados de datos: misma escala `content/note` de 12 px que sus filas.
    Esta regla se retira cuando el consumidor actualice a la próxima versión
@@ -118,6 +119,12 @@ cs-select.capture-source-select .cs-select__clear {
   display: none;
 }
 
+/* Misma brecha del DS que .capture-source-select, aplicada a la fuente del
+   recupero (también requerida y de selección única). */
+cs-select.recovery-source-select .cs-select__clear {
+  display: none;
+}
+
 /* Compatibilidad temporal con Comsatel DS 0.2.2: ColumnManager conserva el
    gap del campo aunque reciba label="". Al retirar la etiqueta vacía del
    flujo flex, el contenedor y su trigger md comparten la altura de 32 px. */
@@ -198,6 +205,12 @@ body {
    alcanza también popovers y modales que el DS porta al body. */
 body:has(.operations-shell) {
   --elevation-surface-default: #fcfaf4;
+}
+
+/* Mapa no necesita reservar una pista de scroll: esa reserva se sumaba al
+   inset propio de su superficie y hacía mayor la separación del lado derecho. */
+body:has(.fleet-map-page) .operations-main {
+  scrollbar-gutter: auto;
 }
 
 /* Compatibilidad con Comsatel DS 0.2.2: sus popovers se portalizan a body y
