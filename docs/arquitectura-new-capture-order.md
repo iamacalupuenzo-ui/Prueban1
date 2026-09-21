@@ -1,10 +1,12 @@
 # Refactor de arquitectura — `new-capture-order.page.ts`
 
 Fecha: 20 de septiembre de 2026
-Estado: ejecución completada, verificada en navegador y reconciliada contra
-el árbol en vivo. Lista para que Enzo corra `ng test` y decida cuándo
-integrarla (ver "Ejecución", "Verificación funcional en navegador" y
-"Reconciliación con el árbol en vivo").
+Estado: **lista para integrar.** Compila (`tsc`/`ng build`), verificada en
+navegador (los seis flujos) y `ng test` pasa completo — 9 pruebas, 5
+archivos, 0 fallos, corrido por Enzo el 20 de septiembre de 2026 sobre el
+worktree. Solo falta decidir cuándo y cómo integrarla a `main` (ver
+"Ejecución", "Verificación funcional en navegador", "Reconciliación con el
+árbol en vivo" y "Fixture de prueba corregido").
 
 ## Problema
 
@@ -223,17 +225,22 @@ compone los componentes de arriba.
 el presupuesto de estilos por componente. No se ejecutó `ng test` por
 acuerdo explícito con Enzo.
 
-**Pendiente de revisión humana antes de integrar la rama:**
+**Estado de `ng test`: pasa completo.** Corrido por Enzo el 20 de
+septiembre de 2026 sobre `D:\Investigacion\Prueban1-refactor` — 5 archivos
+de spec, 9 pruebas, 0 fallos (`app.spec.ts`, `auth.guard.spec.ts`,
+`fleet-telemetry.service.spec.ts`, `mock-auth.service.spec.ts`,
+`mock-capture-orders.service.spec.ts`). El primer intento se bloqueó por el
+fixture desactualizado documentado en "Fixture de prueba corregido"; ya
+resuelto.
 
-- `ng test` — corrido por Enzo. Primer intento bloqueado por un fixture
-  desactualizado en `mock-capture-orders.service.spec.ts` (ver "Fixture de
-  prueba corregido" abajo); ya corregido, pendiente confirmar que el resto
-  de la suite pasa.
+**Único pendiente real: decidir cuándo y cómo integrar la rama.**
+
 - Las violaciones de tokens listadas en `investigacion-componentes-capturas.md`
   siguen intactas a propósito; no se corrigen en esta rama.
-- Decidir cuándo y cómo integrar `refactor/split-new-capture-order` a `main`
-  (merge, rebase o cherry-pick) una vez que Enzo confirme que las pruebas
-  pasan.
+- Falta decidir el mecanismo de integración a `main` (merge, rebase o
+  cherry-pick) y reconciliar una última vez contra lo que haya cambiado en
+  `D:\Investigacion\Prueban1` entre esta verificación y el momento de
+  integrar, si el árbol en vivo se siguió moviendo.
 
 ## Fixture de prueba corregido (no relacionado al refactor)
 
