@@ -79,7 +79,7 @@ import { CaptureOrdersService } from './capture-orders.service';
           (keydown.space)="$event.preventDefault(); state.copyLastLocation(location.lastLocation)"
         >
           <span>{{ location.lastLocation }}</span>
-          <cs-icon name="copy" [size]="14" aria-hidden="true" />
+          <cs-icon name="copy" [size]="12" aria-hidden="true" />
         </span>
       } @else {
         <span>Sin posición disponible</span>

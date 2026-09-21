@@ -103,7 +103,7 @@ import { CaptureOrdersService } from './capture-orders.service';
                     (keydown.space)="$event.preventDefault(); state.copyLastLocation(location.lastLocation)"
                   >
                     {{ location.lastLocation }}
-                    <cs-icon name="copy" [size]="14" aria-hidden="true" />
+                    <cs-icon name="copy" [size]="12" aria-hidden="true" />
                   </span>
                   <span>Última posición disponible para la unidad.</span>
                 } @else {

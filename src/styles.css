@@ -634,10 +634,7 @@ body:has([aria-modal='true']) {
 .bulk-errors__table-frame .cs-table__row:last-child {
   border-bottom: 0;
 }
-.bulk-error-unit-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--layout-gap-2xs);
+.copy-on-hover {
   border-radius: var(--radius-xs);
   color: inherit;
   font: inherit;
@@ -650,19 +647,21 @@ body:has([aria-modal='true']) {
     color var(--motion-duration-fast) var(--motion-easing-standard),
     text-decoration-color var(--motion-duration-fast) var(--motion-easing-standard);
 }
-.bulk-error-unit-copy cs-icon {
+.copy-on-hover cs-icon {
   display: none;
+  margin-inline-start: calc(var(--layout-gap-2xs) + 2px);
+  vertical-align: text-bottom;
 }
-.bulk-error-unit-copy:hover,
-.bulk-error-unit-copy:focus-visible {
+.copy-on-hover:hover,
+.copy-on-hover:focus-visible {
   color: var(--color-text-brand-default);
   text-decoration-color: currentColor;
 }
-.bulk-error-unit-copy:hover cs-icon,
-.bulk-error-unit-copy:focus-visible cs-icon {
-  display: block;
+.copy-on-hover:hover cs-icon,
+.copy-on-hover:focus-visible cs-icon {
+  display: inline-block;
 }
-.bulk-error-unit-copy:focus-visible {
+.copy-on-hover:focus-visible {
   outline: var(--layout-border-thick) solid var(--color-border-brand-default);
   outline-offset: var(--layout-padding-2xs);
 }

@@ -508,12 +508,12 @@ export class CaptureOrdersService {
   readonly messageKind = signal<'success' | 'error' | 'info'>('success');
   private feedbackTimeout?: number;
 
-  showMessage(kind: 'success' | 'error' | 'info', message: string): void {
+  showMessage(kind: 'success' | 'error' | 'info', message: string, duration = 4000): void {
     this.dismissMessage();
     this.messageKind.set(kind);
     this.message.set(message);
     if (kind !== 'error')
-      this.feedbackTimeout = window.setTimeout(() => this.dismissMessage(), 4000);
+      this.feedbackTimeout = window.setTimeout(() => this.dismissMessage(), duration);
   }
   dismissMessage(): void {
     if (this.feedbackTimeout !== undefined) window.clearTimeout(this.feedbackTimeout);
@@ -536,12 +536,14 @@ export class CaptureOrdersService {
     this.copiedLocation.set(null);
     this.copiedBulkUnitCode.set(unitCode);
     this.resetCopyFeedback();
+    this.showMessage('success', 'Código de unidad copiado', 2000);
   }
   async copyLastLocation(location: string): Promise<void> {
     if (!(await this.copyText(location))) return;
     this.copiedBulkUnitCode.set(null);
     this.copiedLocation.set(location);
     this.resetCopyFeedback();
+    this.showMessage('success', 'Ubicación copiada', 2000);
   }
   private async copyText(value: string): Promise<boolean> {
     try {
