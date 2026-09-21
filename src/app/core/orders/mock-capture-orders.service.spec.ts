@@ -10,7 +10,7 @@ describe('MockCaptureOrdersService', () => {
   });
 
   it('registra una orden de captura con el estado inicial registrada', async () => {
-    const result = await service.create({ unitCode: 'vhc-1024', source: 'Centro de operaciones', caseNumber: 'EXP-2026-0158', receivedOn: '2026-09-17' });
+    const result = await service.create({ unitCode: 'vhc-1024', source: 'Centro de operaciones', caseNumber: 'EXP-2026-0158', receivedOn: '2026-09-17', documents: [] });
 
     expect(result.kind).toBe('success');
     expect(service.orders()).toHaveLength(1);
@@ -18,7 +18,7 @@ describe('MockCaptureOrdersService', () => {
   });
 
   it('evita duplicar la unidad dentro de la sesión simulada', async () => {
-    const draft = { unitCode: 'VHC-1024', source: 'Centro de operaciones', caseNumber: 'EXP-2026-0158', receivedOn: '2026-09-17' };
+    const draft = { unitCode: 'VHC-1024', source: 'Centro de operaciones', caseNumber: 'EXP-2026-0158', receivedOn: '2026-09-17', documents: [] };
     await service.create(draft);
     const duplicate = await service.create({ ...draft, caseNumber: 'EXP-2026-0159' });
 
