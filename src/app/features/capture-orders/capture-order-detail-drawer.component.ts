@@ -1,19 +1,21 @@
-import { Component, inject } from '@angular/core';
-import { Button, Icon, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Component, effect, inject, signal } from '@angular/core';
+import { Button, Icon, Tab, Tabs, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
+import { CAPTURE_DOCUMENT_DEFINITIONS } from '../../core/orders/mock-capture-orders.service';
 import { SideDrawerComponent } from '../../shared/side-drawer.component';
 import { CaptureOrdersService } from './capture-orders.service';
 
 /**
- * Drawer de detalle de una orden de captura. Extraído de
- * `new-capture-order.page.ts` (el `app-side-drawer` de detalle, líneas
- * ~993-1139 del archivo original). Usa `shared/side-drawer.component.ts`
- * igual que antes; el estado de qué orden está seleccionada y si el drawer
- * está abierto vive en `CaptureOrdersService` porque la tabla (quien abre
- * el detalle) y este drawer son componentes hermanos, no padre/hijo.
+ * Drawer de detalle de una orden de captura. Mismo patrón que
+ * `recoveries-detail-drawer.component.ts`: dos `cs-tab` ("Información" e
+ * "Historial") en vez de una sola vista larga — el historial de una orden
+ * puede crecer bastante (cada reconciliación de carga masiva agrega
+ * entradas) y no debe empujar las acciones fuera de la vista inicial. Qué
+ * pestaña está activa es UI local del drawer, se reinicia a "Información"
+ * cada vez que cambia la orden seleccionada.
  */
 @Component({
   selector: 'app-capture-order-detail-drawer',
-  imports: [Button, Icon, SideDrawerComponent, Tag],
+  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag],
   template: `
     <app-side-drawer
       [isOpen]="state.detailsOpen()"
@@ -22,144 +24,218 @@ import { CaptureOrdersService } from './capture-orders.service';
       (closed)="state.closeDetails()"
     >
       @if (state.selectedOrder(); as order) {
-        <div class="details-content">
-          <section class="detail-section" aria-labelledby="detail-information-title">
-            <h3 id="detail-information-title">Información de la orden</h3>
-            <dl class="detail-data">
-              <div>
-                <dt>Unidad</dt>
-                <dd class="detail-data__unit">
-                  <cs-icon [name]="state.unitIconOf(order.unitCode)" [size]="16" aria-hidden="true" />
-                  {{ order.unitCode }}
-                </dd>
-              </div>
-              <div>
-                <dt>Propietario</dt>
-                <dd>{{ state.ownerOf(order.unitCode) }}</dd>
-              </div>
-              <div>
-                <dt>Fuente de la orden</dt>
-                <dd>{{ order.source }}</dd>
-              </div>
-              <div>
-                <dt>Expediente</dt>
-                <dd>{{ order.caseNumber }}</dd>
-              </div>
-              <div>
-                <dt>Fecha de recepción</dt>
-                <dd>{{ state.formatReceivedDate(order.receivedOn) }}</dd>
-              </div>
-              <div>
-                <dt>Estado</dt>
-                <dd>
-                  <cs-tag
-                    [value]="order.status"
-                    [severity]="state.statusSeverity(order.status)"
-                    [rounded]="true"
-                    size="lg"
-                  />
-                </dd>
-              </div>
-              @if (order.annulmentReason) {
-                <div class="detail-data__full-width">
-                  <dt>Motivo de anulación</dt>
-                  <dd>{{ order.annulmentReason }}</dd>
-                </div>
-              }
-              @if (order.observationReason) {
-                <div class="detail-data__full-width">
-                  <dt>Observación</dt>
-                  <dd>{{ order.observationReason }}</dd>
-                </div>
-              }
-            </dl>
-          </section>
-
-          <section class="detail-section detail-location" aria-labelledby="detail-location-title">
-            <div class="detail-location__header">
-              <h3 id="detail-location-title">Última ubicación</h3>
-              <span
-                class="detail-location__history"
-                aria-label="Historial de ubicaciones: próximamente disponible"
-              >
-                <cs-icon name="history" [size]="16" aria-hidden="true" />Historial
-              </span>
-            </div>
-            <div class="detail-location__value">
-              <cs-icon name="map-pin" [size]="18" aria-hidden="true" />
-              <div>
-                @if (state.locationOf(order.unitCode); as location) {
-                  <span
-                    class="detail-location__address copy-on-hover"
-                    role="button"
-                    tabindex="0"
-                    [attr.aria-label]="
-                      state.copiedLocation() === location.lastLocation
-                        ? 'Ubicación copiada'
-                        : 'Copiar última ubicación'
-                    "
-                    (click)="state.copyLastLocation(location.lastLocation)"
-                    (keydown.enter)="state.copyLastLocation(location.lastLocation)"
-                    (keydown.space)="$event.preventDefault(); state.copyLastLocation(location.lastLocation)"
-                  >
-                    {{ location.lastLocation }}
-                    <cs-icon name="copy" [size]="12" aria-hidden="true" />
-                  </span>
-                  <span>Última posición disponible para la unidad.</span>
-                } @else {
-                  <strong>Sin posición disponible</strong>
-                  <span>La telemetría no reporta una posición para esta unidad.</span>
-                }
-              </div>
-            </div>
-          </section>
-
-          <section class="detail-actions" aria-labelledby="detail-actions-title">
-            <h3 id="detail-actions-title">Acciones disponibles</h3>
-            <div>
-              @if (state.canClose(order)) {
-                <cs-button variant="default" size="sm" (click)="state.closeFromDetails(order)">
-                  <cs-icon name="lock" [size]="16" aria-hidden="true" />Cerrar captura
-                </cs-button>
-              }
-              @if (state.canObserve(order)) {
-                <cs-button variant="default" size="sm" (click)="state.observeFromDetails(order)">
-                  <cs-icon name="alert-triangle" [size]="16" aria-hidden="true" />Observar captura
-                </cs-button>
-              }
-              @if (state.canAnnul(order)) {
-                <cs-button variant="destructive" size="sm" (click)="state.annulFromDetails(order)">
-                  <cs-icon name="x" [size]="16" aria-hidden="true" />Anular captura
-                </cs-button>
-              }
-              @if (!state.canClose(order) && !state.canObserve(order) && !state.canAnnul(order)) {
-                <p>No hay acciones disponibles para el estado actual.</p>
-              }
-            </div>
-          </section>
-
-          <section class="status-timeline" aria-labelledby="status-timeline-title">
-            <h3 id="status-timeline-title">Historial de la orden</h3>
-            <ol>
-              @for (
-                entry of state.statusEntries(order);
-                track entry.action + entry.at;
-                let isCurrent = $last
-              ) {
-                <li [class.is-current]="isCurrent">
-                  <span class="status-timeline__marker" aria-hidden="true"></span>
-                  <div class="status-timeline__entry">
-                    <div class="status-timeline__heading">
-                      <strong>{{ entry.action }}</strong>
-                      <time>{{ entry.at }}</time>
-                    </div>
-                    <span>{{ entry.detail }}</span>
+        <cs-tabs [value]="activeTab()" (valueChange)="activeTab.set($event)">
+          <cs-tab class="capture-detail-tab" value="info" label="Información">
+            <div class="details-content">
+              <section class="detail-section" aria-labelledby="detail-information-title">
+                <h3 id="detail-information-title">Información de la orden</h3>
+                <dl class="detail-data">
+                  <div>
+                    <dt>Placa</dt>
+                    <dd class="detail-data__unit">
+                      <cs-icon
+                        [name]="state.unitIconOf(order.unitCode)"
+                        [size]="16"
+                        aria-hidden="true"
+                      />
+                      {{ order.unitCode }}
+                    </dd>
                   </div>
-                </li>
-              }
-            </ol>
-          </section>
-        </div>
+                  <div>
+                    <dt>Financiera</dt>
+                    <dd>{{ order.financiera }}</dd>
+                  </div>
+                  <div>
+                    <dt>Motor</dt>
+                    <dd>{{ state.engineCodeOf(order.unitCode) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Contrato</dt>
+                    <dd>
+                      <cs-tag
+                        [value]="state.contractStatusOf(order.unitCode)"
+                        [severity]="state.contractStatusSeverity(state.contractStatusOf(order.unitCode))"
+                        [rounded]="true"
+                        size="lg"
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Propietario</dt>
+                    <dd>{{ state.ownerOf(order.unitCode) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fuente de la orden</dt>
+                    <dd>{{ order.source }}</dd>
+                  </div>
+                  <div>
+                    <dt>Expediente</dt>
+                    <dd>{{ order.caseNumber }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha de registro</dt>
+                    <dd>{{ order.createdAt }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fecha de recepción</dt>
+                    <dd>{{ state.formatReceivedDate(order.receivedOn) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Estado</dt>
+                    <dd>
+                      <cs-tag
+                        [value]="order.status"
+                        [severity]="state.statusSeverity(order.status)"
+                        [rounded]="true"
+                        size="lg"
+                      />
+                    </dd>
+                  </div>
+                  @if (order.annulmentReason) {
+                    <div class="detail-data__full-width">
+                      <dt>Motivo de paralización</dt>
+                      <dd>{{ order.annulmentReason }}</dd>
+                    </div>
+                  }
+                  @if (order.observationReason) {
+                    <div class="detail-data__full-width">
+                      <dt>Observación</dt>
+                      <dd>{{ order.observationReason }}</dd>
+                    </div>
+                  }
+                </dl>
+              </section>
+
+              <section class="detail-section detail-documents" aria-labelledby="detail-documents-title">
+                <h3 id="detail-documents-title">Documentos de respaldo</h3>
+                <ul class="detail-documents-list">
+                  @for (definition of documentDefinitions; track definition.type) {
+                    <li class="detail-documents-list__item">
+                      <button
+                        type="button"
+                        class="documents-checklist__box"
+                        role="checkbox"
+                        [attr.aria-checked]="state.hasDocument(order, definition.type)"
+                        [attr.aria-label]="
+                          (state.hasDocument(order, definition.type) ? 'Quitar ' : 'Marcar ') +
+                          definition.label
+                        "
+                        (click)="state.toggleDocumentMark(order, definition.type)"
+                      >
+                        @if (state.hasDocument(order, definition.type)) {
+                          <cs-icon name="check" [size]="12" aria-hidden="true" />
+                        }
+                      </button>
+                      <span>{{ definition.label }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+
+              <section class="detail-section detail-location" aria-labelledby="detail-location-title">
+                <div class="detail-location__header">
+                  <h3 id="detail-location-title">Última ubicación</h3>
+                  <span
+                    class="detail-location__history"
+                    aria-label="Historial de ubicaciones: próximamente disponible"
+                  >
+                    <cs-icon name="history" [size]="16" aria-hidden="true" />Historial
+                  </span>
+                </div>
+                <div class="detail-location__value">
+                  <cs-icon name="map-pin" [size]="18" aria-hidden="true" />
+                  <div>
+                    @if (state.locationOf(order.unitCode); as location) {
+                      <span
+                        class="detail-location__address copy-on-hover"
+                        role="button"
+                        tabindex="0"
+                        [attr.aria-label]="
+                          state.copiedLocation() === location.lastLocation
+                            ? 'Ubicación copiada'
+                            : 'Copiar última ubicación'
+                        "
+                        (click)="state.copyLastLocation(location.lastLocation)"
+                        (keydown.enter)="state.copyLastLocation(location.lastLocation)"
+                        (keydown.space)="
+                          $event.preventDefault(); state.copyLastLocation(location.lastLocation)
+                        "
+                      >
+                        {{ location.lastLocation }}
+                        <cs-icon name="copy" [size]="12" aria-hidden="true" />
+                      </span>
+                      <span>Última posición disponible para la unidad.</span>
+                    } @else {
+                      <strong>Sin posición disponible</strong>
+                      <span>La telemetría no reporta una posición para esta unidad.</span>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <section class="detail-actions detail-actions--last" aria-labelledby="detail-actions-title">
+                <h3 id="detail-actions-title">Acciones disponibles</h3>
+                <div>
+                  @if (state.canClose(order)) {
+                    <cs-button variant="default" size="sm" (click)="state.closeFromDetails(order)">
+                      <cs-icon name="lock" [size]="16" aria-hidden="true" />Marcar como capturado
+                    </cs-button>
+                  }
+                  @if (state.canObserve(order)) {
+                    <cs-button variant="default" size="sm" (click)="state.observeFromDetails(order)">
+                      <cs-icon name="alert-triangle" [size]="16" aria-hidden="true" />Observar
+                      captura
+                    </cs-button>
+                  }
+                  @if (state.canRevertToPending(order)) {
+                    <cs-button variant="default" size="sm" (click)="state.revertToPending(order)">
+                      <cs-icon name="circle-dot" [size]="16" aria-hidden="true" />Volver a
+                      pendiente
+                    </cs-button>
+                  }
+                  @if (state.canAnnul(order)) {
+                    <cs-button variant="destructive" size="sm" (click)="state.annulFromDetails(order)">
+                      <cs-icon name="x" [size]="16" aria-hidden="true" />Paralizar captura
+                    </cs-button>
+                  }
+                  @if (
+                    !state.canClose(order) &&
+                    !state.canObserve(order) &&
+                    !state.canRevertToPending(order) &&
+                    !state.canAnnul(order)
+                  ) {
+                    <p>No hay acciones disponibles para el estado actual.</p>
+                  }
+                </div>
+              </section>
+            </div>
+          </cs-tab>
+          <cs-tab class="capture-detail-tab" value="historial" label="Historial">
+            <div class="details-content">
+              <section class="status-timeline" aria-labelledby="status-timeline-title">
+                <h3 id="status-timeline-title">Historial de la orden</h3>
+                <ol>
+                  @for (
+                    entry of state.statusEntries(order);
+                    track entry.action + entry.at;
+                    let isCurrent = $last
+                  ) {
+                    <li [class.is-current]="isCurrent">
+                      <span class="status-timeline__marker" aria-hidden="true"></span>
+                      <div class="status-timeline__entry">
+                        <div class="status-timeline__heading">
+                          <strong>{{ entry.action }}</strong>
+                          <time>{{ entry.at }}</time>
+                        </div>
+                        <span>{{ entry.detail }}</span>
+                      </div>
+                    </li>
+                  }
+                </ol>
+              </section>
+            </div>
+          </cs-tab>
+        </cs-tabs>
       }
     </app-side-drawer>
   `,
@@ -167,6 +243,29 @@ import { CaptureOrdersService } from './capture-orders.service';
     `
       :host {
         display: contents;
+      }
+      /* Con Historial en su propia pestaña, "Acciones disponibles" es la
+         última sección de "Información" — el borde inferior de
+         .detail-actions (global, compartido con Recuperos) queda huérfano
+         sin nada que separar. */
+      .detail-actions.detail-actions--last {
+        border-block-end: 0;
+      }
+      .detail-documents-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--layout-gap-md) var(--layout-gap-lg);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .detail-documents-list__item {
+        display: flex;
+        align-items: center;
+        gap: var(--layout-gap-sm);
+        color: var(--color-text-base-default);
+        font-size: var(--font-size-content-ui);
+        line-height: var(--font-line-height-content-ui);
       }
       .status-timeline {
         display: grid;
@@ -239,4 +338,13 @@ import { CaptureOrdersService } from './capture-orders.service';
 })
 export class CaptureOrderDetailDrawerComponent {
   protected readonly state = inject(CaptureOrdersService);
+  protected readonly documentDefinitions = CAPTURE_DOCUMENT_DEFINITIONS;
+  protected readonly activeTab = signal('info');
+
+  constructor() {
+    effect(() => {
+      this.state.selectedOrder();
+      this.activeTab.set('info');
+    });
+  }
 }

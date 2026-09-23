@@ -1,3 +1,38 @@
+## Capturas sin registro individual {#capturas-sin-registro-individual}
+
+Fecha: 21 de septiembre de 2026.
+Estado: implementado — comentado, no eliminado.
+
+**Decisión de producto:** Capturas no tendrá registro individual de datos.
+No se evalúa ni se agrega información orden por orden desde la matriz; la
+única vía para dar de alta capturas es la carga masiva (`Carga masiva de
+capturas`, ahora botón primario en el header — antes era secundario, junto
+al botón de registro individual que existía en ese momento).
+
+**Qué se comentó (no se borró: el sistema de diseño todavía no define cómo
+se verá este flujo cuando vuelva, así que el código queda listo para
+restaurar):**
+
+- El botón "Registrar captura" del header — `new-capture-order.page.ts`.
+- El `<app-capture-order-form-dialog />` (formulario de registro/edición) y
+  su entrada en el arreglo `imports` — `new-capture-order.page.ts`.
+- La opción "Editar" del menú de acciones por fila, tanto en `actionItems()`
+  como en `runAction()` — `capture-order-table.component.ts`.
+
+**Qué NO se tocó, porque no forma parte del registro/edición individual:**
+
+- "Ver detalle" (drawer de solo lectura).
+- Las transiciones de ciclo de vida por fila: Cerrar, Observar, Anular.
+- `CaptureOrdersService`: `openForm`/`openEdit`/`draft`/`errors`/`validate`
+  y el resto de la lógica de formulario siguen intactos, solo dejaron de
+  tener un disparador en la UI. Se conservan porque no son "el componente"
+  que se pidió comentar, sino el estado que ese componente consumía.
+
+**Pendiente para cuando el sistema de diseño defina el flujo:** decidir si
+el registro/edición individual vuelve tal cual estaba, o si el sistema de
+diseño impone un patrón distinto (por ejemplo, un componente de formulario
+propio en vez del `side-drawer` genérico actual).
+
 # Refactor de arquitectura — `new-capture-order.page.ts`
 
 Fecha: 20 de septiembre de 2026

@@ -6,7 +6,7 @@
     "caseNumber": "EXP-2026-0201",
     "receivedOn": "2026-09-18",
     "createdAt": "18 sep. 2026, 08:00",
-    "status": "Registrada",
+    "status": "Pendiente",
     "auditTrail": [
       {
         "action": "Creación",
@@ -18,7 +18,8 @@
         "at": "18 sep. 2026, 08:00",
         "detail": "Se corrigió el número de expediente antes de iniciar la atención."
       }
-    ]
+    ],
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0102",
@@ -27,19 +28,15 @@
     "caseNumber": "EXP-2026-0202",
     "receivedOn": "2026-09-17",
     "createdAt": "17 sep. 2026, 09:07",
-    "status": "En revisión",
+    "status": "Pendiente",
     "auditTrail": [
       {
         "action": "Creación",
         "at": "17 sep. 2026, 08:28",
         "detail": "Orden registrada a solicitud del cliente."
-      },
-      {
-        "action": "Cambio de estado",
-        "at": "17 sep. 2026, 09:07",
-        "detail": "Estado actualizado de Registrada a En revisión."
       }
-    ]
+    ],
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0103",
@@ -48,17 +45,12 @@
     "caseNumber": "EXP-2026-0203",
     "receivedOn": "2026-09-16",
     "createdAt": "16 sep. 2026, 10:14",
-    "status": "Con observación",
+    "status": "Observado",
     "auditTrail": [
       {
         "action": "Creación",
         "at": "16 sep. 2026, 08:46",
         "detail": "Orden registrada por Autoridad competente."
-      },
-      {
-        "action": "Cambio de estado",
-        "at": "16 sep. 2026, 09:16",
-        "detail": "Estado actualizado de Registrada a En revisión."
       },
       {
         "action": "Edición",
@@ -68,9 +60,10 @@
       {
         "action": "Cambio de estado",
         "at": "16 sep. 2026, 10:14",
-        "detail": "Estado actualizado de En revisión a Con observación: se requiere información adicional."
+        "detail": "Estado actualizado de Pendiente a Observado: se requiere información adicional."
       }
-    ]
+    ],
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0104",
@@ -79,7 +72,8 @@
     "caseNumber": "EXP-2026-0204",
     "receivedOn": "2026-09-15",
     "createdAt": "15 sep. 2026, 11:21",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0105",
@@ -88,7 +82,8 @@
     "caseNumber": "EXP-2026-0205",
     "receivedOn": "2026-09-14",
     "createdAt": "14 sep. 2026, 12:28",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0106",
@@ -97,7 +92,8 @@
     "caseNumber": "EXP-2026-0206",
     "receivedOn": "2026-09-13",
     "createdAt": "13 sep. 2026, 13:35",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0107",
@@ -106,7 +102,8 @@
     "caseNumber": "EXP-2026-0207",
     "receivedOn": "2026-09-12",
     "createdAt": "12 sep. 2026, 14:42",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0108",
@@ -115,7 +112,8 @@
     "caseNumber": "EXP-2026-0208",
     "receivedOn": "2026-09-11",
     "createdAt": "11 sep. 2026, 15:49",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0109",
@@ -124,7 +122,8 @@
     "caseNumber": "EXP-2026-0209",
     "receivedOn": "2026-09-10",
     "createdAt": "10 sep. 2026, 16:56",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0110",
@@ -133,7 +132,8 @@
     "caseNumber": "EXP-2026-0210",
     "receivedOn": "2026-09-09",
     "createdAt": "9 sep. 2026, 17:03",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0111",
@@ -142,7 +142,8 @@
     "caseNumber": "EXP-2026-0211",
     "receivedOn": "2026-09-08",
     "createdAt": "8 sep. 2026, 08:10",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0112",
@@ -151,7 +152,8 @@
     "caseNumber": "EXP-2026-0212",
     "receivedOn": "2026-09-07",
     "createdAt": "7 sep. 2026, 09:17",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0113",
@@ -160,7 +162,8 @@
     "caseNumber": "EXP-2026-0213",
     "receivedOn": "2026-09-06",
     "createdAt": "6 sep. 2026, 10:24",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0114",
@@ -169,7 +172,8 @@
     "caseNumber": "EXP-2026-0214",
     "receivedOn": "2026-09-05",
     "createdAt": "5 sep. 2026, 11:31",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0115",
@@ -178,7 +182,8 @@
     "caseNumber": "EXP-2026-0215",
     "receivedOn": "2026-09-04",
     "createdAt": "4 sep. 2026, 12:38",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0116",
@@ -187,7 +192,8 @@
     "caseNumber": "EXP-2026-0216",
     "receivedOn": "2026-09-03",
     "createdAt": "3 sep. 2026, 13:45",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0117",
@@ -196,7 +202,8 @@
     "caseNumber": "EXP-2026-0217",
     "receivedOn": "2026-09-02",
     "createdAt": "2 sep. 2026, 14:52",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0118",
@@ -205,7 +212,8 @@
     "caseNumber": "EXP-2026-0218",
     "receivedOn": "2026-09-01",
     "createdAt": "1 sep. 2026, 15:59",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0119",
@@ -214,7 +222,8 @@
     "caseNumber": "EXP-2026-0219",
     "receivedOn": "2026-08-31",
     "createdAt": "31 ago. 2026, 16:06",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0120",
@@ -223,7 +232,8 @@
     "caseNumber": "EXP-2026-0220",
     "receivedOn": "2026-08-30",
     "createdAt": "30 ago. 2026, 17:13",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0121",
@@ -232,7 +242,8 @@
     "caseNumber": "EXP-2026-0221",
     "receivedOn": "2026-08-29",
     "createdAt": "29 ago. 2026, 08:20",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0122",
@@ -241,7 +252,8 @@
     "caseNumber": "EXP-2026-0222",
     "receivedOn": "2026-08-28",
     "createdAt": "28 ago. 2026, 09:27",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0123",
@@ -250,7 +262,8 @@
     "caseNumber": "EXP-2026-0223",
     "receivedOn": "2026-08-27",
     "createdAt": "27 ago. 2026, 10:34",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0124",
@@ -259,7 +272,8 @@
     "caseNumber": "EXP-2026-0224",
     "receivedOn": "2026-08-26",
     "createdAt": "26 ago. 2026, 11:41",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0125",
@@ -268,7 +282,8 @@
     "caseNumber": "EXP-2026-0225",
     "receivedOn": "2026-08-25",
     "createdAt": "25 ago. 2026, 12:48",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0126",
@@ -277,7 +292,8 @@
     "caseNumber": "EXP-2026-0226",
     "receivedOn": "2026-08-24",
     "createdAt": "24 ago. 2026, 13:55",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0127",
@@ -286,7 +302,8 @@
     "caseNumber": "EXP-2026-0227",
     "receivedOn": "2026-08-23",
     "createdAt": "23 ago. 2026, 14:02",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0128",
@@ -295,7 +312,8 @@
     "caseNumber": "EXP-2026-0228",
     "receivedOn": "2026-08-22",
     "createdAt": "22 ago. 2026, 15:09",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0129",
@@ -304,7 +322,8 @@
     "caseNumber": "EXP-2026-0229",
     "receivedOn": "2026-08-21",
     "createdAt": "21 ago. 2026, 16:16",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0130",
@@ -313,7 +332,8 @@
     "caseNumber": "EXP-2026-0230",
     "receivedOn": "2026-08-20",
     "createdAt": "20 ago. 2026, 17:23",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0131",
@@ -322,7 +342,8 @@
     "caseNumber": "EXP-2026-0231",
     "receivedOn": "2026-08-19",
     "createdAt": "19 ago. 2026, 08:30",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0132",
@@ -331,7 +352,8 @@
     "caseNumber": "EXP-2026-0232",
     "receivedOn": "2026-08-18",
     "createdAt": "18 ago. 2026, 09:37",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0133",
@@ -340,7 +362,8 @@
     "caseNumber": "EXP-2026-0233",
     "receivedOn": "2026-08-17",
     "createdAt": "17 ago. 2026, 10:44",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0134",
@@ -349,7 +372,8 @@
     "caseNumber": "EXP-2026-0234",
     "receivedOn": "2026-08-16",
     "createdAt": "16 ago. 2026, 11:51",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0135",
@@ -358,7 +382,8 @@
     "caseNumber": "EXP-2026-0235",
     "receivedOn": "2026-08-15",
     "createdAt": "15 ago. 2026, 12:58",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0136",
@@ -367,7 +392,8 @@
     "caseNumber": "EXP-2026-0236",
     "receivedOn": "2026-08-14",
     "createdAt": "14 ago. 2026, 13:05",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0137",
@@ -376,7 +402,8 @@
     "caseNumber": "EXP-2026-0237",
     "receivedOn": "2026-08-13",
     "createdAt": "13 ago. 2026, 14:12",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0138",
@@ -385,7 +412,8 @@
     "caseNumber": "EXP-2026-0238",
     "receivedOn": "2026-08-12",
     "createdAt": "12 ago. 2026, 15:19",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0139",
@@ -394,7 +422,8 @@
     "caseNumber": "EXP-2026-0239",
     "receivedOn": "2026-08-11",
     "createdAt": "11 ago. 2026, 16:26",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0140",
@@ -403,7 +432,8 @@
     "caseNumber": "EXP-2026-0240",
     "receivedOn": "2026-08-10",
     "createdAt": "10 ago. 2026, 17:33",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0141",
@@ -412,7 +442,8 @@
     "caseNumber": "EXP-2026-0241",
     "receivedOn": "2026-08-09",
     "createdAt": "9 ago. 2026, 08:40",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0142",
@@ -421,7 +452,8 @@
     "caseNumber": "EXP-2026-0242",
     "receivedOn": "2026-08-08",
     "createdAt": "8 ago. 2026, 09:47",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0143",
@@ -430,7 +462,8 @@
     "caseNumber": "EXP-2026-0243",
     "receivedOn": "2026-08-07",
     "createdAt": "7 ago. 2026, 10:54",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0144",
@@ -439,7 +472,8 @@
     "caseNumber": "EXP-2026-0244",
     "receivedOn": "2026-08-06",
     "createdAt": "6 ago. 2026, 11:01",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0145",
@@ -448,7 +482,8 @@
     "caseNumber": "EXP-2026-0245",
     "receivedOn": "2026-08-05",
     "createdAt": "5 ago. 2026, 12:08",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0146",
@@ -457,7 +492,8 @@
     "caseNumber": "EXP-2026-0246",
     "receivedOn": "2026-08-04",
     "createdAt": "4 ago. 2026, 13:15",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0147",
@@ -466,7 +502,8 @@
     "caseNumber": "EXP-2026-0247",
     "receivedOn": "2026-08-03",
     "createdAt": "3 ago. 2026, 14:22",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0148",
@@ -475,7 +512,8 @@
     "caseNumber": "EXP-2026-0248",
     "receivedOn": "2026-08-02",
     "createdAt": "2 ago. 2026, 15:29",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0149",
@@ -484,7 +522,8 @@
     "caseNumber": "EXP-2026-0249",
     "receivedOn": "2026-08-01",
     "createdAt": "1 ago. 2026, 16:36",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0150",
@@ -493,7 +532,8 @@
     "caseNumber": "EXP-2026-0250",
     "receivedOn": "2026-07-31",
     "createdAt": "31 jul. 2026, 17:43",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0151",
@@ -502,7 +542,8 @@
     "caseNumber": "EXP-2026-0251",
     "receivedOn": "2026-07-30",
     "createdAt": "30 jul. 2026, 08:50",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0152",
@@ -511,7 +552,8 @@
     "caseNumber": "EXP-2026-0252",
     "receivedOn": "2026-07-29",
     "createdAt": "29 jul. 2026, 09:57",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0153",
@@ -520,7 +562,8 @@
     "caseNumber": "EXP-2026-0253",
     "receivedOn": "2026-07-28",
     "createdAt": "28 jul. 2026, 10:04",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0154",
@@ -529,7 +572,8 @@
     "caseNumber": "EXP-2026-0254",
     "receivedOn": "2026-07-27",
     "createdAt": "27 jul. 2026, 11:11",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0155",
@@ -538,7 +582,8 @@
     "caseNumber": "EXP-2026-0255",
     "receivedOn": "2026-07-26",
     "createdAt": "26 jul. 2026, 12:18",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0156",
@@ -547,7 +592,8 @@
     "caseNumber": "EXP-2026-0256",
     "receivedOn": "2026-07-25",
     "createdAt": "25 jul. 2026, 13:25",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0157",
@@ -556,7 +602,8 @@
     "caseNumber": "EXP-2026-0257",
     "receivedOn": "2026-07-24",
     "createdAt": "24 jul. 2026, 14:32",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0158",
@@ -565,7 +612,8 @@
     "caseNumber": "EXP-2026-0258",
     "receivedOn": "2026-07-23",
     "createdAt": "23 jul. 2026, 15:39",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0159",
@@ -574,7 +622,8 @@
     "caseNumber": "EXP-2026-0259",
     "receivedOn": "2026-07-22",
     "createdAt": "22 jul. 2026, 16:46",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0160",
@@ -583,7 +632,8 @@
     "caseNumber": "EXP-2026-0260",
     "receivedOn": "2026-07-21",
     "createdAt": "21 jul. 2026, 17:53",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0161",
@@ -592,7 +642,8 @@
     "caseNumber": "EXP-2026-0261",
     "receivedOn": "2026-07-20",
     "createdAt": "20 jul. 2026, 08:00",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0162",
@@ -601,7 +652,8 @@
     "caseNumber": "EXP-2026-0262",
     "receivedOn": "2026-07-19",
     "createdAt": "19 jul. 2026, 09:07",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0163",
@@ -610,7 +662,8 @@
     "caseNumber": "EXP-2026-0263",
     "receivedOn": "2026-07-18",
     "createdAt": "18 jul. 2026, 10:14",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0164",
@@ -619,7 +672,8 @@
     "caseNumber": "EXP-2026-0264",
     "receivedOn": "2026-07-17",
     "createdAt": "17 jul. 2026, 11:21",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0165",
@@ -628,7 +682,8 @@
     "caseNumber": "EXP-2026-0265",
     "receivedOn": "2026-07-16",
     "createdAt": "16 jul. 2026, 12:28",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0166",
@@ -637,7 +692,8 @@
     "caseNumber": "EXP-2026-0266",
     "receivedOn": "2026-07-15",
     "createdAt": "15 jul. 2026, 13:35",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0167",
@@ -646,7 +702,8 @@
     "caseNumber": "EXP-2026-0267",
     "receivedOn": "2026-07-14",
     "createdAt": "14 jul. 2026, 14:42",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0168",
@@ -655,7 +712,8 @@
     "caseNumber": "EXP-2026-0268",
     "receivedOn": "2026-07-13",
     "createdAt": "13 jul. 2026, 15:49",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0169",
@@ -664,7 +722,8 @@
     "caseNumber": "EXP-2026-0269",
     "receivedOn": "2026-07-12",
     "createdAt": "12 jul. 2026, 16:56",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0170",
@@ -673,7 +732,8 @@
     "caseNumber": "EXP-2026-0270",
     "receivedOn": "2026-07-11",
     "createdAt": "11 jul. 2026, 17:03",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0171",
@@ -682,7 +742,8 @@
     "caseNumber": "EXP-2026-0271",
     "receivedOn": "2026-07-10",
     "createdAt": "10 jul. 2026, 08:10",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0172",
@@ -691,7 +752,8 @@
     "caseNumber": "EXP-2026-0272",
     "receivedOn": "2026-07-09",
     "createdAt": "9 jul. 2026, 09:17",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0173",
@@ -700,7 +762,8 @@
     "caseNumber": "EXP-2026-0273",
     "receivedOn": "2026-07-08",
     "createdAt": "8 jul. 2026, 10:24",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0174",
@@ -709,7 +772,8 @@
     "caseNumber": "EXP-2026-0274",
     "receivedOn": "2026-07-07",
     "createdAt": "7 jul. 2026, 11:31",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0175",
@@ -718,7 +782,8 @@
     "caseNumber": "EXP-2026-0275",
     "receivedOn": "2026-07-06",
     "createdAt": "6 jul. 2026, 12:38",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0176",
@@ -727,7 +792,8 @@
     "caseNumber": "EXP-2026-0276",
     "receivedOn": "2026-07-05",
     "createdAt": "5 jul. 2026, 13:45",
-    "status": "Cerrada"
+    "status": "Capturado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0177",
@@ -736,7 +802,8 @@
     "caseNumber": "EXP-2026-0277",
     "receivedOn": "2026-07-04",
     "createdAt": "4 jul. 2026, 14:52",
-    "status": "Registrada"
+    "status": "Pendiente",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0178",
@@ -745,7 +812,8 @@
     "caseNumber": "EXP-2026-0278",
     "receivedOn": "2026-07-03",
     "createdAt": "3 jul. 2026, 15:59",
-    "status": "En revisión"
+    "status": "Pendiente",
+    "financiera": "Santander"
   },
   {
     "id": "CAP-0179",
@@ -754,7 +822,8 @@
     "caseNumber": "EXP-2026-0279",
     "receivedOn": "2026-07-02",
     "createdAt": "2 jul. 2026, 16:06",
-    "status": "Con observación"
+    "status": "Observado",
+    "financiera": "Mapfre"
   },
   {
     "id": "CAP-0180",
@@ -763,6 +832,7 @@
     "caseNumber": "EXP-2026-0280",
     "receivedOn": "2026-07-01",
     "createdAt": "1 jul. 2026, 17:13",
-    "status": "Cerrada"
+    "status": "Paralizado",
+    "financiera": "Santander"
   }
 ]

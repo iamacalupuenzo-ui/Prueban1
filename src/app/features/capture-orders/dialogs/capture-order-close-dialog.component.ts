@@ -14,7 +14,7 @@ import { CaptureOrdersService } from '../capture-orders.service';
     <cs-modal
       class="capture-surface-modal"
       [isOpen]="state.closeOpen()"
-      title="Cerrar captura"
+      title="Marcar como capturado"
       width="sm"
       [primaryAction]="state.closePrimaryAction()"
       [secondaryAction]="secondaryAction"
@@ -25,8 +25,8 @@ import { CaptureOrdersService } from '../capture-orders.service';
       @if (state.closingOrder(); as order) {
         <div class="confirmation-content">
           <p>
-            Cerrarás la orden {{ order.id }}. Esta acción quedará registrada en el historial y la
-            captura ya no admitirá edición ni anulación.
+            Marcarás la orden {{ order.id }} como Capturado. Esta acción quedará registrada en el
+            historial y la captura ya no admitirá edición ni paralización.
           </p>
         </div>
       }

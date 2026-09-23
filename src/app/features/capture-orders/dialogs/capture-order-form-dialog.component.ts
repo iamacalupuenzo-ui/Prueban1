@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Button, Icon, Input, Modal, Select, SelectOption } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
+  CAPTURE_DOCUMENT_DEFINITIONS,
   CaptureDocumentType,
   CaptureOrderDocument,
 } from '../../../core/orders/mock-capture-orders.service';
@@ -8,29 +9,6 @@ import { SideDrawerComponent } from '../../../shared/side-drawer.component';
 import { CaptureOrdersService, DraftField } from '../capture-orders.service';
 import { UnitAutocompleteComponent } from '../../../shared/unit-autocomplete.component';
 import { UnitTypeMultiSelectComponent } from '../../../shared/unit-type-multi-select.component';
-
-const DOCUMENT_DEFINITIONS: ReadonlyArray<{
-  type: CaptureDocumentType;
-  label: string;
-  description: string;
-}> = [
-  {
-    type: 'resolution',
-    label: 'Resolución',
-    description: 'Documento que sustenta la medida emitida.',
-  },
-  { type: 'oficio', label: 'Oficio', description: 'Comunicación oficial vinculada a la captura.' },
-  {
-    type: 'transit-notification',
-    label: 'Notificación a Tránsito',
-    description: 'Constancia de la notificación a la autoridad de tránsito.',
-  },
-  {
-    type: 'requisition',
-    label: 'Requisitoria',
-    description: 'Documento de requisitoria correspondiente.',
-  },
-];
 
 /**
  * Formulario de registro/edición de una orden de captura, incluida su
@@ -340,11 +318,75 @@ const DOCUMENT_DEFINITIONS: ReadonlyArray<{
         font-size: var(--font-size-content-note);
         line-height: var(--font-line-height-content-note);
       }
+      .selected-unit-summary {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--layout-gap-lg);
+        padding: var(--layout-padding-md) var(--layout-padding-lg);
+        border: var(--layout-border-thin) solid var(--color-border-divider);
+        border-radius: var(--radius-md);
+        background: var(--elevation-surface-default);
+      }
+      .selected-unit-summary__identity,
+      .selected-unit-summary__location {
+        display: grid;
+        gap: var(--layout-gap-2xs);
+        min-width: 0;
+      }
+      .selected-unit-summary__identity {
+        flex: 0 0 auto;
+      }
+      .selected-unit-summary__location {
+        flex: 1 1 0;
+      }
+      .selected-unit-summary p {
+        margin: 0;
+        color: var(--color-text-base-subtlest);
+        font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
+        letter-spacing: var(--font-letter-spacing-content);
+      }
+      .selected-unit-summary__identity span {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--layout-gap-2xs);
+        color: var(--color-text-base-subtle);
+        font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
+      }
+      .selected-unit-summary__identity strong {
+        color: var(--color-text-base-default);
+        font-size: inherit;
+        font-weight: var(--font-weight-accent);
+      }
+      .selected-unit-summary__location span {
+        overflow: hidden;
+        color: var(--color-text-base-default);
+        font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      .selected-unit-summary__divider {
+        align-self: stretch;
+        width: var(--layout-border-thin);
+        background: var(--color-border-divider);
+      }
       @media (max-width: 767px) {
         .field-grid,
         .unit-selection-grid,
         .case-received-grid {
           grid-template-columns: 1fr;
+        }
+        .selected-unit-summary {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .selected-unit-summary__divider {
+          width: 100%;
+          height: var(--layout-border-thin);
         }
       }
     `,
@@ -359,7 +401,7 @@ export class CaptureOrderFormDialogComponent {
     { label: 'Autoridad competente', value: 'Autoridad competente' },
     { label: 'Operación en campo', value: 'Operación en campo' },
   ];
-  protected readonly documentDefinitions = DOCUMENT_DEFINITIONS;
+  protected readonly documentDefinitions = CAPTURE_DOCUMENT_DEFINITIONS;
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

@@ -1,16 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { Icon, InputDropdown, InputDropdownOption, InputGroup, InputGroupAddon, InputGroupInput } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
-  Button,
-  Calendar,
-  Icon,
-  InputDropdown,
-  InputDropdownOption,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  Popover,
-} from '@iamacalupuenzo-ui/comsatel-ds';
-import { CAPTURE_ORDER_STATUSES } from '../../core/orders/mock-capture-orders.service';
+  CAPTURE_CONTRACT_STATUSES,
+  CAPTURE_ORDER_STATUSES,
+} from '../../core/orders/mock-capture-orders.service';
+import { DateRangeFilterComponent, type DateRangeFilterValue } from '../../shared/date-range-filter.component';
 import { CaptureOrdersService } from './capture-orders.service';
 
 /**
@@ -22,7 +16,7 @@ import { CaptureOrdersService } from './capture-orders.service';
  */
 @Component({
   selector: 'app-capture-order-toolbar',
-  imports: [Button, Calendar, Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput, Popover],
+  imports: [DateRangeFilterComponent, Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput],
   template: `
     <div class="matrix-toolbar" aria-label="Filtros de la matriz de capturas">
       <div class="toolbar-field">
@@ -55,68 +49,24 @@ import { CaptureOrdersService } from './capture-orders.service';
           (valueChange)="state.setStatusFilter($event)"
         />
       </div>
+      <div class="toolbar-field toolbar-field--status">
+        <label id="capture-contract-label">Contrato</label
+        ><cs-input-dropdown
+          class="status-filter-control"
+          aria-labelledby="capture-contract-label"
+          placeholder="Todos los contratos"
+          size="md"
+          [options]="contractOptions"
+          [value]="state.contractFilter()"
+          (valueChange)="state.setContractFilter($event)"
+        />
+      </div>
       <div class="toolbar-field toolbar-field--date-range">
-        <label id="capture-date-range-label" for="capture-date-range">Fecha de registro</label>
-        <div #captureDateTrigger class="date-range-trigger">
-          <cs-input-group
-            ><cs-input-group-input
-              id="capture-date-range"
-              fieldSize="md"
-              [readonly]="true"
-              [value]="dateRangeInputValue()"
-              placeholder="Selecciona un rango"
-              ariaHasPopup="dialog"
-              [ariaExpanded]="dateRangeOpen()"
-              ariaControls="capture-date-range-calendar"
-              ariaLabelledby="capture-date-range-label"
-              (focused)="openDateRangePicker()"
-              (enterKey)="toggleDateRangePicker()"
-              (escapeKey)="closeDateRangePicker()" /><cs-input-group-addon
-              align="inline-end"
-              [compact]="true"
-              ><button
-                type="button"
-                class="date-range-calendar-button"
-                aria-label="Abrir calendario de rango"
-                [attr.aria-expanded]="dateRangeOpen()"
-                aria-controls="capture-date-range-calendar"
-                (click)="toggleDateRangePicker()"
-              >
-                <cs-icon
-                  name="calendar"
-                  [size]="16"
-                  aria-hidden="true"
-                /></button></cs-input-group-addon
-          ></cs-input-group>
-        </div>
-        <cs-popover
-          [isOpen]="dateRangeOpen()"
-          [triggerRef]="captureDateTrigger"
-          placement="bottom-start"
-          [offset]="4"
-          role="dialog"
-          ariaLabel="Seleccionar rango de fechas de registro"
-          [bare]="true"
-          (closed)="closeDateRangePicker()"
-          ><div id="capture-date-range-calendar" class="date-range-popover">
-            <cs-calendar
-              [selected]="pendingDateRangeStart() ? [pendingDateRangeStart()!] : []"
-              [rangeSelected]="selectedDateRange()"
-              [weekStartDay]="1"
-              ariaLabelledby="capture-date-range-label"
-              (dateChange)="selectDateRangeDate($event)"
-            />
-            <div class="date-range-popover__actions">
-              <cs-button
-                variant="subtle"
-                size="sm"
-                [disabled]="!state.dateFrom()"
-                (click)="clearDateRange()"
-                >Limpiar</cs-button
-              >
-            </div>
-          </div></cs-popover
-        >
+        <app-date-range-filter
+          label="Fecha de registro"
+          [value]="{ from: state.dateFrom(), to: state.dateTo() }"
+          (valueChange)="onDateRangeChange($event)"
+        />
       </div>
     </div>
   `,
@@ -127,7 +77,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       }
       .matrix-toolbar {
         display: grid;
-        grid-template-columns: minmax(220px, 480px) max-content 220px;
+        grid-template-columns: minmax(220px, 480px) max-content max-content 220px;
         align-items: end;
         gap: var(--layout-gap-md);
       }
@@ -151,43 +101,6 @@ import { CaptureOrdersService } from './capture-orders.service';
         inline-size: 220px;
         min-inline-size: 220px;
         max-inline-size: 220px;
-      }
-      .date-range-trigger {
-        min-inline-size: 0;
-      }
-      .date-range-calendar-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--layout-padding-xs);
-        border: 0;
-        border-radius: var(--radius-sm);
-        background: transparent;
-        color: var(--color-text-base-subtle);
-        cursor: pointer;
-      }
-      .date-range-calendar-button:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 var(--layout-border-thick) var(--color-border-focused);
-      }
-      .date-range-popover {
-        --elevation-surface-default: var(--color-background-base);
-        display: grid;
-        inline-size: 257px;
-        overflow: hidden;
-        gap: 0;
-        border: var(--layout-border-thin) solid var(--color-border-neutral-subtle);
-        border-radius: var(--radius-lg);
-        background-color: var(--color-background-base);
-        box-shadow: var(--shadow-xs);
-      }
-      .date-range-popover__actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        min-block-size: var(--layout-size-md);
-        padding-inline: var(--layout-padding-md);
-        border-top: var(--layout-border-thin) solid var(--color-border-divider);
       }
       @media (max-width: 1080px) {
         .matrix-toolbar {
@@ -219,55 +132,12 @@ export class CaptureOrderToolbarComponent {
     { label: 'Todos los estados', value: '__all__' },
     ...CAPTURE_ORDER_STATUSES.map((status) => ({ label: status, value: status })),
   ];
+  protected readonly contractOptions: InputDropdownOption[] = [
+    { label: 'Todos los contratos', value: '__all__' },
+    ...CAPTURE_CONTRACT_STATUSES.map((status) => ({ label: status, value: status })),
+  ];
 
-  protected readonly dateRangeOpen = signal(false);
-  protected readonly pendingDateRangeStart = computed(() =>
-    this.state.dateFrom() && !this.state.dateTo() ? this.state.dateFrom() : '',
-  );
-  protected readonly selectedDateRange = computed(() =>
-    this.state.dateFrom() && this.state.dateTo()
-      ? ([this.state.dateFrom(), this.state.dateTo()] as [string, string])
-      : undefined,
-  );
-  protected readonly dateRangeLabel = computed(() => {
-    const from = this.state.dateFrom();
-    const to = this.state.dateTo();
-    if (!from) return 'Selecciona un rango';
-    if (!to) return `Desde ${this.formatFilterDate(from)}`;
-    return `${this.formatFilterDate(from)} — ${this.formatFilterDate(to)}`;
-  });
-  protected readonly dateRangeInputValue = computed(() =>
-    this.state.dateFrom() ? this.dateRangeLabel() : '',
-  );
-
-  protected openDateRangePicker(): void {
-    this.dateRangeOpen.set(true);
-  }
-  protected toggleDateRangePicker(): void {
-    this.dateRangeOpen.update((isOpen) => !isOpen);
-  }
-  protected closeDateRangePicker(): void {
-    this.dateRangeOpen.set(false);
-  }
-  protected selectDateRangeDate(value: string): void {
-    const from = this.state.dateFrom();
-    if (!from || this.state.dateTo()) {
-      this.state.dateFrom.set(value);
-      this.state.dateTo.set('');
-      return;
-    }
-    const [start, end] = [from, value].sort();
-    this.state.setDateRange(start, end);
-    this.dateRangeOpen.set(false);
-  }
-  protected clearDateRange(): void {
-    this.state.clearDateRange();
-  }
-  private formatFilterDate(value: string): string {
-    return new Intl.DateTimeFormat('es-PE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }).format(new Date(`${value}T00:00:00`));
+  protected onDateRangeChange(value: DateRangeFilterValue): void {
+    this.state.setDateRange(value.from, value.to);
   }
 }

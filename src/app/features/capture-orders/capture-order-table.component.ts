@@ -25,7 +25,10 @@ import {
   type ColumnManagerItem,
   type DropdownItem,
 } from '@iamacalupuenzo-ui/comsatel-ds';
-import { CaptureOrder } from '../../core/orders/mock-capture-orders.service';
+import {
+  CAPTURE_DOCUMENT_DEFINITIONS,
+  CaptureOrder,
+} from '../../core/orders/mock-capture-orders.service';
 import { CaptureOrdersService } from './capture-orders.service';
 
 /**
@@ -44,7 +47,7 @@ import { CaptureOrdersService } from './capture-orders.service';
   selector: 'app-capture-order-table',
   imports: [
     Button,
-    ColumnManager,
+    // ColumnManager, — gestor de columnas oculto, ver comentario junto a `.table-utilities` en el template.
     DropdownItemComponent,
     Icon,
     InputDropdown,
@@ -54,8 +57,12 @@ import { CaptureOrdersService } from './capture-orders.service';
     Tag,
   ],
   template: `
-    <ng-template #statusCell let-status
-      ><cs-tag [value]="status" [severity]="state.statusSeverity(status)" [rounded]="true" size="lg"
+    <ng-template #statusCell let-order
+      ><cs-tag
+        [value]="order.status"
+        [severity]="state.statusSeverity(order.status)"
+        [rounded]="true"
+        size="lg"
     /></ng-template>
     <ng-template #unitCell let-order>
       <span class="capture-orders-table__unit">
@@ -84,6 +91,38 @@ import { CaptureOrdersService } from './capture-orders.service';
       } @else {
         <span>Sin posición disponible</span>
       }
+    </ng-template>
+    <ng-template #contractCell let-order>
+      <cs-tag
+        [value]="state.contractStatusOf(order.unitCode)"
+        [severity]="state.contractStatusSeverity(state.contractStatusOf(order.unitCode))"
+        [rounded]="true"
+        size="lg"
+      />
+    </ng-template>
+    <ng-template #documentsCell let-order>
+      <span class="documents-checklist" [attr.aria-label]="documentsSummary(order)">
+        @for (definition of documentDefinitions; track definition.type) {
+          <button
+            type="button"
+            class="documents-checklist__box"
+            role="checkbox"
+            [attr.aria-checked]="state.hasDocument(order, definition.type)"
+            [attr.aria-label]="
+              (state.hasDocument(order, definition.type) ? 'Quitar ' : 'Marcar ') +
+              definition.label +
+              ' — ' +
+              order.unitCode
+            "
+            [title]="definition.label"
+            (click)="state.toggleDocumentMark(order, definition.type)"
+          >
+            @if (state.hasDocument(order, definition.type)) {
+              <cs-icon name="check" [size]="12" aria-hidden="true" />
+            }
+          </button>
+        }
+      </span>
     </ng-template>
     <ng-template #actionsCell let-order>
       <span #actionTrigger class="row-action-trigger"
@@ -118,6 +157,12 @@ import { CaptureOrdersService } from './capture-orders.service';
           }</div
       ></cs-popover>
     </ng-template>
+    <!--
+      Gestor de columnas y menú de descarga ocultos a pedido: todavía no
+      existen como componentes del sistema de diseño (comsatel-ds), así que
+      se dejan comentados en vez de borrarse — se restauran cuando el DS los
+      incorpore. La lógica en la clase (columnManagerColumns, exportOptions,
+      setVisibleColumns, etc.) queda intacta para ese momento.
     <div class="table-utilities">
       <cs-column-manager
         class="capture-column-manager"
@@ -159,6 +204,8 @@ import { CaptureOrdersService } from './capture-orders.service';
           }</div
       ></cs-popover>
     </div>
+    -->
+
     <div class="table-area" [class.table-area--actions-shadow]="showActionsShadow()">
       <div class="table-frame">
         <cs-table
@@ -191,7 +238,7 @@ import { CaptureOrdersService } from './capture-orders.service';
                 >Reintentar</cs-button
               >
             } @else {
-              <cs-button variant="secondary" size="sm" (click)="state.openForm()"
+              <cs-button variant="default" size="sm" (click)="state.openForm()"
                 ><cs-icon name="plus" [size]="16" aria-hidden="true" />Registrar
                 captura</cs-button
               >
@@ -320,6 +367,7 @@ import { CaptureOrdersService } from './capture-orders.service';
         text-align: center;
       }
       .empty-state p {
+        margin: 0;
         color: var(--color-text-base-subtle);
         font-size: var(--font-size-content-ui);
         line-height: var(--font-line-height-content-ui);
@@ -334,7 +382,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       }
       .empty-state__message > div {
         display: grid;
-        gap: var(--layout-gap-xs);
+        gap: var(--layout-gap-md);
       }
       .empty-state strong {
         color: var(--color-text-base-default);
@@ -347,7 +395,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       .row-action-menu {
         box-sizing: border-box;
         display: grid;
-        width: 139px;
+        width: 208px;
         max-width: calc(100vw - var(--layout-padding-2xl));
         padding: var(--layout-padding-xs);
       }
@@ -395,6 +443,7 @@ import { CaptureOrdersService } from './capture-orders.service';
 })
 export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   protected readonly state = inject(CaptureOrdersService);
+  protected readonly documentDefinitions = CAPTURE_DOCUMENT_DEFINITIONS;
 
   protected readonly pageSizeOptions: InputDropdownOption[] = [10, 25, 50, 100].map((size) => ({
     label: `${size} por página`,
@@ -409,18 +458,21 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   @ViewChild('unitCell', { static: true }) private unitCellRef!: TemplateRef<unknown>;
   @ViewChild('lastLocationCell', { static: true })
   private lastLocationCellRef!: TemplateRef<unknown>;
+  @ViewChild('contractCell', { static: true }) private contractCellRef!: TemplateRef<unknown>;
+  @ViewChild('documentsCell', { static: true }) private documentsCellRef!: TemplateRef<unknown>;
   @ViewChild('actionsCell', { static: true }) private actionsCellRef!: TemplateRef<unknown>;
   @ViewChild('captureOrdersTable', { read: ElementRef })
   private captureOrdersTableRef!: ElementRef<HTMLElement>;
 
   private readonly configurableTableColumns: readonly TableColumn[] = [
-    { key: 'id', label: 'Orden', width: '128px', isSortable: true },
-    { key: 'unit', label: 'Unidad', width: '128px', isSortable: true },
-    { key: 'owner', label: 'Propietario', width: '144px', isSortable: true },
+    { key: 'financiera', label: 'Financiera', width: '144px', isSortable: true },
+    { key: 'unit', label: 'Placa', width: '128px', isSortable: true },
+    { key: 'engine', label: 'Motor', width: '144px', isSortable: true },
+    { key: 'contract', label: 'Contrato', width: '128px', isSortable: true },
+    { key: 'documents', label: 'Documentos', width: '140px', isSortable: true },
     { key: 'lastLocation', label: 'Última ubicación', isSortable: true },
-    { key: 'source', label: 'Fuente', width: '176px', isSortable: true },
     { key: 'status', label: 'Estado', width: '160px', isSortable: true },
-    { key: 'created', label: 'Registro', width: '176px', isSortable: true },
+    { key: 'created', label: 'Fecha de registro', width: '176px', isSortable: true },
   ];
   private readonly actionsTableColumn: TableColumn = {
     key: 'actions',
@@ -429,11 +481,12 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
     align: 'center',
   };
   private readonly tableColumnMinWidths: Readonly<Record<string, number>> = {
-    id: 128,
+    financiera: 144,
     unit: 128,
-    owner: 144,
+    engine: 144,
+    contract: 128,
+    documents: 140,
     lastLocation: 272,
-    source: 176,
     status: 160,
     created: 176,
     actions: 72,
@@ -548,40 +601,50 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   }
   protected actionItems(order: CaptureOrder): DropdownItem[] {
     const items: DropdownItem[] = [{ label: 'Ver detalle', value: 'view', icon: 'eye' }];
-    if (this.state.canEdit(order)) items.push({ label: 'Editar', value: 'edit', icon: 'pencil' });
+    // Edición individual fuera de alcance (ver docs/arquitectura-new-capture-order.md#capturas-sin-registro-individual):
+    // if (this.state.canEdit(order)) items.push({ label: 'Editar', value: 'edit', icon: 'pencil' });
     if (this.state.canClose(order))
-      items.push({ label: 'Cerrar captura', value: 'close', icon: 'lock' });
+      items.push({ label: 'Marcar como capturado', value: 'close', icon: 'lock' });
     if (this.state.canObserve(order)) {
       items.push({ label: 'Observar captura', value: 'observe', icon: 'alert-triangle' });
     }
+    if (this.state.canRevertToPending(order)) {
+      items.push({ label: 'Volver a pendiente', value: 'revert-to-pending', icon: 'circle-dot' });
+    }
     if (this.state.canAnnul(order)) {
       items[items.length - 1].dividerAfter = true;
-      items.push({ label: 'Anular captura', value: 'annul', icon: 'x', variant: 'destructive' });
+      items.push({ label: 'Paralizar captura', value: 'annul', icon: 'x', variant: 'destructive' });
     }
     return items;
   }
   protected runAction(order: CaptureOrder, item: DropdownItem): void {
     this.closeActionMenu();
     if (item.value === 'view') this.state.openDetails(order);
-    if (item.value === 'edit') this.state.openEdit(order);
+    // if (item.value === 'edit') this.state.openEdit(order); — ver nota en actionItems().
     if (item.value === 'close') this.state.openCloseConfirmation(order);
     if (item.value === 'observe') this.state.openObservation(order);
+    if (item.value === 'revert-to-pending') void this.state.revertToPending(order);
     if (item.value === 'annul') this.state.openAnnulment(order);
+  }
+  protected documentsSummary(order: CaptureOrder): string {
+    return `${this.state.documentsCompleteCountOf(order)} de ${this.documentDefinitions.length} documentos adjuntos`;
   }
   private tableCellFor(order: CaptureOrder, key: string): TableRow['cells'][number] {
     switch (key) {
-      case 'id':
-        return order.id;
+      case 'financiera':
+        return order.financiera;
       case 'unit':
         return { template: this.unitCellRef, context: { $implicit: order } };
-      case 'owner':
-        return this.state.ownerOf(order.unitCode);
       case 'lastLocation':
         return { template: this.lastLocationCellRef, context: { $implicit: order } };
-      case 'source':
-        return order.source;
+      case 'engine':
+        return this.state.engineCodeOf(order.unitCode);
+      case 'contract':
+        return { template: this.contractCellRef, context: { $implicit: order } };
+      case 'documents':
+        return { template: this.documentsCellRef, context: { $implicit: order } };
       case 'status':
-        return { template: this.statusCellRef, context: { $implicit: order.status } };
+        return { template: this.statusCellRef, context: { $implicit: order } };
       case 'created':
         return order.createdAt;
       case 'actions':

@@ -16,15 +16,19 @@ cs-table .cs-table {
 }
 
 /* La pista de desplazamiento forma parte de la superficie de la tabla; no
-   debe introducir una franja blanca al final de sus filas. */
-.capture-orders-table .cs-table__wrap {
+   debe introducir una franja blanca al final de sus filas.
+   Se aplica a todas las matrices con este patrón (Capturas, Recuperos). */
+.capture-orders-table .cs-table__wrap,
+.recoveries-table .cs-table__wrap {
   scrollbar-color: var(--color-border-neutral-default) var(--elevation-surface-default);
   scrollbar-width: thin;
 }
-.capture-orders-table .cs-table__wrap::-webkit-scrollbar-track {
+.capture-orders-table .cs-table__wrap::-webkit-scrollbar-track,
+.recoveries-table .cs-table__wrap::-webkit-scrollbar-track {
   background: var(--elevation-surface-default);
 }
-.capture-orders-table .cs-table__wrap::-webkit-scrollbar-thumb {
+.capture-orders-table .cs-table__wrap::-webkit-scrollbar-thumb,
+.recoveries-table .cs-table__wrap::-webkit-scrollbar-thumb {
   border: var(--layout-border-thick) solid var(--elevation-surface-default);
   border-radius: var(--radius-full);
   background: var(--color-border-neutral-default);
@@ -32,24 +36,29 @@ cs-table .cs-table {
 
 /* Prototipo de Capturas: mantiene las acciones disponibles al desplazar
    horizontalmente una tabla angosta. Se reemplaza por una API de columna fija
-   cuando Table la publique. */
+   cuando Table la publique. Recuperos comparte el mismo prototipo. */
 .capture-orders-table .cs-table__th:last-child,
-.capture-orders-table .cs-table__td:last-child {
+.capture-orders-table .cs-table__td:last-child,
+.recoveries-table .cs-table__th:last-child,
+.recoveries-table .cs-table__td:last-child {
   position: sticky;
   right: 0;
   isolation: isolate;
   background-color: var(--elevation-surface-default);
 }
 
-.capture-orders-table .cs-table__th:last-child {
+.capture-orders-table .cs-table__th:last-child,
+.recoveries-table .cs-table__th:last-child {
   z-index: 2;
 }
 
-.capture-orders-table .cs-table__td:last-child {
+.capture-orders-table .cs-table__td:last-child,
+.recoveries-table .cs-table__td:last-child {
   z-index: 1;
 }
 
-.capture-orders-table .cs-table__row:hover .cs-table__td:last-child {
+.capture-orders-table .cs-table__row:hover .cs-table__td:last-child,
+.recoveries-table .cs-table__row:hover .cs-table__td:last-child {
   /* `--color-interaction-hovered` es rgba. Se compone una única vez sobre una
      superficie opaca para conservar el tono de la fila y ocultar las celdas
      que se desplazan por debajo de la columna fija. */
@@ -60,7 +69,8 @@ cs-table .cs-table {
   );
 }
 
-.capture-orders-table .cs-table__row--highlighted .cs-table__td:last-child {
+.capture-orders-table .cs-table__row--highlighted .cs-table__td:last-child,
+.recoveries-table .cs-table__row--highlighted .cs-table__td:last-child {
   background-color: var(--color-background-brand-subtlest);
   background-image: none;
 }
@@ -69,6 +79,11 @@ cs-table .cs-table {
    rectángulo claro sobre el hover de su propia fila. Conserva el color de la
    fila y diferencia la acción mediante el color del icono. */
 .capture-orders-table
+  .cs-table__row:hover
+  .cs-table__td:last-child
+  > cs-button
+  > .cs-button--subtle:hover,
+.recoveries-table
   .cs-table__row:hover
   .cs-table__td:last-child
   > cs-button
@@ -81,7 +96,9 @@ cs-table .cs-table {
    Se muestra mientras queda contenido oculto hacia la izquierda de Acciones
    y desaparece al llegar al final del scroll. */
 .table-area--actions-shadow .capture-orders-table .cs-table__th:last-child::before,
-.table-area--actions-shadow .capture-orders-table .cs-table__td:last-child::before {
+.table-area--actions-shadow .capture-orders-table .cs-table__td:last-child::before,
+.table-area--actions-shadow .recoveries-table .cs-table__th:last-child::before,
+.table-area--actions-shadow .recoveries-table .cs-table__td:last-child::before {
   position: absolute;
   inset-block: 0;
   inset-inline-start: calc(var(--layout-gap-lg) * -1);
@@ -105,6 +122,115 @@ cs-table .cs-table {
   color: var(--color-text-brand-default);
 }
 
+
+/* Columna "Documentos": 4 casillas cuadradas, una por documento requerido.
+   Por ahora solo marcan/desmarcan la presencia del documento en la orden ya
+   registrada; la carga del archivo real queda para una iteración
+   posterior. */
+.documents-checklist {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--layout-gap-xs);
+  /* Sin esto, el contenedor toma como línea base la del primer checkbox
+     (comportamiento por defecto de un inline-flex dentro de una celda), así
+     que al marcar solo esa casilla el ícono agregado corre la línea base y
+     desplaza visualmente todo el grupo. */
+  vertical-align: middle;
+}
+.documents-checklist__box {
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: var(--layout-border-thin) solid var(--color-border-neutral-default);
+  border-radius: var(--radius-xs);
+  background: var(--color-background-base);
+  color: var(--color-icon-inverse);
+  cursor: pointer;
+}
+.documents-checklist__box:hover {
+  border-color: var(--color-border-brand-default);
+}
+.documents-checklist__box:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--layout-border-thick) var(--color-border-focused);
+}
+.documents-checklist__box[aria-checked='true'] {
+  border-color: var(--color-border-brand-default);
+  background: var(--color-background-brand-default);
+}
+/* El glyph del check tiene más peso visual bajo su centro geométrico
+   (el trazo baja antes de subir), así que centrado "a la perfección" por
+   caja se ve corrido hacia abajo — se compensa con un nudge óptico. */
+.documents-checklist__box cs-icon {
+  margin-block-start: -1px;
+}
+
+/* Trazabilidad de ruta del mapa embebido de Bitácora
+   (fleet-map-canvas.component.ts) — Leaflet inyecta estos elementos fuera
+   del árbol que compila Angular, así que la encapsulación de estilos del
+   componente no los alcanza y quedan acá, en global. `fleet-trail-line` da
+   sensación de flujo animando el desfase de los guiones de la línea
+   punteada; `fleet-trail-arrow` hace lo mismo con las flechas de dirección,
+   en cascada (cada una arranca con un `animation-delay` distinto, fijado
+   inline por `createTrailArrowIcon`), para que junto con la línea se lea
+   como movimiento continuo hacia el sentido real de la unidad — necesario
+   en avenidas de dos sentidos donde la línea sola no distingue cuál. */
+.fleet-trail-line {
+  animation: fleet-trail-flow 0.6s linear infinite;
+}
+@keyframes fleet-trail-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+.fleet-trail-arrow {
+  animation: fleet-trail-arrow-pulse 1.5s ease-in-out infinite;
+}
+@keyframes fleet-trail-arrow-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Evento del viaje seleccionado (fleet-map-canvas.component.ts,
+   trip-events-panel.component.ts): onda expansiva que se repite mientras el
+   marcador está seleccionado, igual patrón que C-Locater (referencia visual
+   validada en /c/Users/emacalupu/Documents/Proyectos/CLocater/C-Locater) —
+   ayuda a distinguirlo del resto de puntos cuando hay varios agrupados. */
+.fleet-event-marker-ring {
+  animation: fleet-event-ring-expand 1.3s ease-out infinite;
+}
+@keyframes fleet-event-ring-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* `cs-calendar` (Capturas "Fecha de registro" y Bitácora "Rango de
+   fechas", ambos vía shared/date-range-filter.component.ts) ya trae su
+   propio borde/radius/sombra en su template interno; adentro de la
+   tarjeta del popover que lo envuelve eso duplica el marco (dos bordes
+   pegados, dos sombras) en vez de mostrar solo el de la tarjeta. Va acá
+   en vez de en el CSS del propio componente porque `.cs-calendar` es un
+   div interno del template de Calendar — la encapsulación de vistas no
+   deja que un componente padre lo alcance con estilos con scope. */
+.date-range-popover .cs-calendar {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
 /* El Drawer se porta a body. Esta excepción queda global y limitada al
    selector de fuente de Capturas para conservar el label md en 13 px. */
 cs-select.capture-source-select .cs-select__label {
@@ -119,23 +245,41 @@ cs-select.capture-source-select .cs-select__clear {
   display: none;
 }
 
-/* Misma brecha del DS que .capture-source-select, aplicada a la fuente del
-   recupero (también requerida y de selección única). */
-cs-select.recovery-source-select .cs-select__clear {
+/* Misma brecha del DS que .capture-source-select, aplicada a los select de
+   Recuperos: todos son de selección única y requerida (Fuente, Seguro, Tipo
+   de servicio, Modalidad de robo). Para cambiar el valor se elige otra
+   opción del menú, no hace falta un control de limpieza aparte. */
+cs-select.recovery-source-select .cs-select__clear,
+cs-select.recovery-insurer-select .cs-select__clear,
+cs-select.recovery-service-type-select .cs-select__clear,
+cs-select.recovery-theft-modality-select .cs-select__clear {
   display: none;
+}
+
+/* Alinea las etiquetas de los Select de Recuperos con Registrar captura
+   (content-ui = 13 px). */
+cs-select.recovery-source-select .cs-select__label,
+cs-select.recovery-insurer-select .cs-select__label,
+cs-select.recovery-service-type-select .cs-select__label,
+cs-select.recovery-theft-modality-select .cs-select__label {
+  font-size: var(--font-size-content-ui) !important;
+  line-height: var(--font-line-height-content-ui) !important;
 }
 
 /* Compatibilidad temporal con Comsatel DS 0.2.2: ColumnManager conserva el
    gap del campo aunque reciba label="". Al retirar la etiqueta vacía del
-   flujo flex, el contenedor y su trigger md comparten la altura de 32 px. */
-cs-column-manager.capture-column-manager .cs-input-dropdown__label:empty {
+   flujo flex, el contenedor y su trigger md comparten la altura de 32 px.
+   Se aplica a todas las matrices que usan ColumnManager (Capturas, Recuperos). */
+cs-column-manager.capture-column-manager .cs-input-dropdown__label:empty,
+cs-column-manager.recoveries-column-manager .cs-input-dropdown__label:empty {
   display: none;
 }
 
 /* ColumnManager 0.2.2 no expone la apariencia del texto del trigger. En esta
    barra funciona como un selector sin label, por lo que replica el rol visual
    del placeholder de Select md. */
-cs-column-manager.capture-column-manager .cs-input-dropdown__trigger {
+cs-column-manager.capture-column-manager .cs-input-dropdown__trigger,
+cs-column-manager.recoveries-column-manager .cs-input-dropdown__trigger {
   color: var(--color-text-base-subtlest) !important;
   font-family: var(--font-family-content);
   font-size: var(--font-size-content-ui) !important;
@@ -148,6 +292,18 @@ cs-column-manager.capture-column-manager .cs-input-dropdown__trigger {
    compensación acotada deja el panel de administración a 4 px del trigger. */
 .cs-popover[aria-label='Administrar columnas'] {
   margin-block-start: calc(var(--layout-gap-xs) * -1);
+}
+
+/* cs-tab-panel trae 16 px de padding-top propio del DS, fijado en el propio
+   componente `cs-tab` (misma especificidad que un selector de clase). El
+   drawer de detalle de Recuperos ya usa `.details-content` (padding-block
+   12 px) dentro de cada pestaña, así que sin este ajuste el primer tab
+   quedaba con 28 px bajo la fila de pestañas. Se reduce a 12 px con
+   `!important` — la única forma de ganarle a la regla propia del DS — para
+   que, sumado a `.details-content`, ambas pestañas terminen en 24 px
+   consistentes. */
+.recoveries-detail-tab .cs-tab-panel {
+  padding-top: var(--layout-padding-lg) !important;
 }
 
 /* Las filas del gestor deben responder igual que las opciones de Select. Los
@@ -469,7 +625,8 @@ body:has([aria-modal='true']) {
 .detail-location__value > cs-icon {
   color: var(--color-text-brand-default);
 }
-.detail-location {
+.detail-location,
+.detail-documents {
   padding-block: var(--layout-padding-lg);
   border-top: var(--layout-border-thin) solid var(--color-border-divider);
 }
@@ -547,25 +704,30 @@ body:has([aria-modal='true']) {
   font-size: var(--font-size-content-ui);
   line-height: var(--font-line-height-content-ui);
 }
-.bulk-template {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--layout-gap-lg);
-  padding: var(--layout-padding-lg);
-  border: var(--layout-border-thin) solid var(--color-border-neutral-subtle);
-  border-radius: var(--radius-md);
-}
-.bulk-template > div,
 .bulk-upload-state {
   display: grid;
   gap: var(--layout-gap-2xs);
 }
-.bulk-template span,
 .bulk-upload-state span {
   color: var(--color-text-base-subtle);
   font-size: var(--font-size-content-note);
   line-height: var(--font-line-height-content-note);
+}
+/* Barra de progreso simple para la validación de carga masiva —
+   `comsatel-ds` solo trae `cs-progress-indicator` (un stepper), no una
+   barra de porcentaje, así que se arma acá con los tokens del DS. */
+.bulk-progress {
+  overflow: hidden;
+  width: 100%;
+  max-width: 320px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-background-neutral-subtlest);
+}
+.bulk-progress__fill {
+  height: 100%;
+  background: var(--color-border-brand-default);
+  transition: width var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .bulk-dropzone {
   display: grid;
@@ -615,6 +777,9 @@ body:has([aria-modal='true']) {
 }
 .bulk-upload-review__summary > div.is-rejected {
   color: var(--color-text-danger-default);
+}
+.bulk-upload-review__summary > div.is-conflict {
+  color: var(--color-text-warning-default);
 }
 .bulk-upload-review__summary strong {
   font-size: var(--font-size-content-caption);

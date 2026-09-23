@@ -1,11 +1,29 @@
 import { Component, TemplateRef, ViewChild, computed, inject } from '@angular/core';
-import { Button, Icon, Modal, Pagination, Table, TableColumn, TableRow } from '@iamacalupuenzo-ui/comsatel-ds';
+import {
+  Button,
+  Icon,
+  Modal,
+  Pagination,
+  Radio,
+  RadioGroup,
+  Table,
+  TableColumn,
+  TableRow,
+} from '@iamacalupuenzo-ui/comsatel-ds';
+import type { ResolveConflictChoice } from '../../../core/orders/mock-capture-orders.service';
 import { CaptureOrdersService } from '../capture-orders.service';
 
 /**
  * Diálogo de carga masiva de capturas. Extraído de
  * `new-capture-order.page.ts` (el `cs-modal` "Carga masiva de capturas",
  * líneas ~812-921 del archivo original).
+ *
+ * La tabla de revisión es UNA sola (`state.bulkReviewRows()`), no dos
+ * secciones separadas: combina las filas rechazadas por un error real del
+ * archivo (duplicado dentro del mismo archivo) y las filas en conflicto
+ * (el sistema y el archivo no coinciden). La última columna muestra el
+ * motivo como texto para las rechazadas, o el control Sistema/Archivo para
+ * las que requieren una decisión — misma tabla, misma paginación.
  *
  * `copiedBulkUnitCode`/`copyBulkUnitCode` viven en `CaptureOrdersService`
  * porque el original compartía una sola señal de "recién copiado" con la
@@ -15,9 +33,9 @@ import { CaptureOrdersService } from '../capture-orders.service';
  */
 @Component({
   selector: 'app-capture-order-bulk-upload-dialog',
-  imports: [Button, Icon, Modal, Pagination, Table],
+  imports: [Button, Icon, Modal, Pagination, Radio, RadioGroup, Table],
   template: `
-    <ng-template #bulkErrorUnitCell let-row>
+    <ng-template #bulkReviewUnitCell let-row>
       <span
         class="copy-on-hover"
         role="button"
@@ -35,6 +53,27 @@ import { CaptureOrdersService } from '../capture-orders.service';
         <cs-icon name="copy" [size]="12" aria-hidden="true" />
       </span>
     </ng-template>
+    <ng-template #bulkReviewDecisionCell let-row>
+      @if (row.kind === 'conflict') {
+        <span class="bulk-review-decision">
+          <cs-radio-group
+            orientation="horizontal"
+            [value]="state.bulkConflictChoices()[row.orderId] ?? ''"
+            [ariaLabel]="'Resolver conflicto de ' + row.unitCode"
+            (valueChange)="onConflictChoice(row.orderId, $event)"
+          >
+            <cs-radio value="keep-system" [label]="'Sistema (' + row.currentStatus + ')'" size="sm" />
+            <cs-radio
+              value="accept-upload"
+              [label]="'Archivo (' + row.acceptedStatus + ')'"
+              size="sm"
+            />
+          </cs-radio-group>
+        </span>
+      } @else {
+        {{ row.reason }}
+      }
+    </ng-template>
     <cs-modal
       class="capture-surface-modal bulk-upload-modal"
       [isOpen]="state.bulkUploadOpen()"
@@ -50,18 +89,10 @@ import { CaptureOrdersService } from '../capture-orders.service';
         @if (state.bulkUploadStage() === 'select') {
           <div class="bulk-upload-intro">
             <p>
-              Carga un archivo con órdenes de captura. Antes de registrar, validaremos su
-              estructura, las unidades y las órdenes activas existentes.
+              Carga un archivo con órdenes de captura de Santander o Mapfre. El sistema detecta
+              automáticamente a qué proveedor pertenece por la estructura de sus columnas — no hace
+              falta elegirlo ni seguir una plantilla fija.
             </p>
-            <div class="bulk-template">
-              <div>
-                <strong>Plantilla de carga</strong>
-                <span>Unidad, fuente de la orden, expediente y fecha de recepción.</span>
-              </div>
-              <cs-button variant="default" size="sm" (click)="state.downloadBulkTemplate()"
-                ><cs-icon name="download" [size]="16" aria-hidden="true" />Descargar plantilla</cs-button
-              >
-            </div>
           </div>
           <input
             #bulkFileInput
@@ -87,9 +118,11 @@ import { CaptureOrdersService } from '../capture-orders.service';
           }
         } @else if (state.bulkUploadStage() === 'validating') {
           <div class="bulk-upload-state" role="status" aria-live="polite">
-            <cs-icon name="loader" [size]="24" aria-hidden="true" />
-            <strong>Validando archivo…</strong>
-            <span>Comprobamos columnas, datos obligatorios y órdenes activas.</span>
+            <div class="bulk-progress" role="progressbar" [attr.aria-valuenow]="state.bulkValidationProgress()" aria-valuemin="0" aria-valuemax="100">
+              <div class="bulk-progress__fill" [style.width.%]="state.bulkValidationProgress()"></div>
+            </div>
+            <strong>Validando archivo… {{ state.bulkValidationProgress() }}%</strong>
+            <span>Comprobamos formato, unidades, contrato (SAP) y última posición.</span>
           </div>
         } @else if (state.bulkUploadStage() === 'review') {
           <div class="bulk-upload-review">
@@ -97,30 +130,37 @@ import { CaptureOrdersService } from '../capture-orders.service';
               <div>
                 <strong>{{ state.bulkValidRows().length }}</strong><span>listas para cargar</span>
               </div>
+              @if (state.bulkConflictRows().length) {
+                <div class="is-conflict">
+                  <strong>{{ state.bulkConflictRows().length }}</strong
+                  ><span>requieren una decisión</span>
+                </div>
+              }
               <div class="is-rejected">
                 <strong>{{ state.bulkRejectedRows().length }}</strong><span>no se cargarán</span>
               </div>
             </div>
             <p>
-              <strong>{{ state.bulkFileName() }}</strong> cumple la estructura de la plantilla. Solo se
-              detallan las filas que requieren corrección.
+              <strong>{{ state.bulkFileName() }}</strong> — formato detectado:
+              <strong>{{ state.bulkDetectedFinanciera() }}</strong>. Solo se detallan las filas que
+              requieren corrección o una decisión.
             </p>
             <section class="bulk-errors" aria-labelledby="bulk-errors-title">
-              <h3 id="bulk-errors-title">Filas que requieren corrección</h3>
+              <h3 id="bulk-errors-title">Filas que requieren corrección o una decisión</h3>
               <div class="bulk-errors__table-frame">
                 <cs-table
-                  [columns]="bulkErrorColumns"
-                  [rows]="bulkErrorTableRows()"
-                  caption="Filas rechazadas durante la validación de la carga masiva"
+                  [columns]="bulkReviewColumns"
+                  [rows]="bulkReviewTableRows()"
+                  caption="Filas que requieren corrección o una decisión antes de cargar"
                 />
-                @if (state.bulkErrorPages() > 1) {
+                @if (state.bulkReviewPages() > 1) {
                   <footer class="bulk-errors__footer">
-                    <span>{{ state.bulkErrorSummary() }}</span>
+                    <span>{{ state.bulkReviewSummary() }}</span>
                     <cs-pagination
-                      [page]="state.bulkErrorPage()"
-                      [totalPages]="state.bulkErrorPages()"
-                      navLabel="Paginación de filas rechazadas"
-                      (pageChange)="state.setBulkErrorPage($event)"
+                      [page]="state.bulkReviewPage()"
+                      [totalPages]="state.bulkReviewPages()"
+                      navLabel="Paginación de filas de revisión"
+                      (pageChange)="state.setBulkReviewPage($event)"
                     />
                   </footer>
                 }
@@ -168,28 +208,44 @@ import { CaptureOrdersService } from '../capture-orders.service';
         font-size: var(--font-size-content-note);
         line-height: var(--font-line-height-content-note);
       }
+      /* El radio va centrado verticalmente dentro de la celda, igual que el
+         estándar de casillas de la columna "Documentos" de la matriz. */
+      .bulk-review-decision {
+        display: flex;
+        align-items: center;
+      }
+      .bulk-review-decision cs-radio-group {
+        display: flex;
+        align-items: center;
+      }
     `,
   ],
 })
 export class CaptureOrderBulkUploadDialogComponent {
   protected readonly state = inject(CaptureOrdersService);
 
-  protected readonly bulkErrorColumns: TableColumn[] = [
+  protected onConflictChoice(orderId: string, value: string): void {
+    this.state.setBulkConflictChoice(orderId, value as ResolveConflictChoice);
+  }
+
+  protected readonly bulkReviewColumns: TableColumn[] = [
     { key: 'row', label: 'Fila', width: '72px' },
     { key: 'unit', label: 'Unidad', width: '128px' },
-    { key: 'reason', label: 'Motivo' },
+    { key: 'decision', label: 'Motivo / Decisión' },
   ];
 
-  @ViewChild('bulkErrorUnitCell', { static: true })
-  private bulkErrorUnitCellRef!: TemplateRef<unknown>;
+  @ViewChild('bulkReviewUnitCell', { static: true })
+  private bulkReviewUnitCellRef!: TemplateRef<unknown>;
+  @ViewChild('bulkReviewDecisionCell', { static: true })
+  private bulkReviewDecisionCellRef!: TemplateRef<unknown>;
 
-  protected readonly bulkErrorTableRows = computed<TableRow[]>(() =>
-    this.state.bulkErrorRowsForPage().map((row) => ({
-      key: `bulk-error-${row.row}`,
+  protected readonly bulkReviewTableRows = computed<TableRow[]>(() =>
+    this.state.bulkReviewRowsForPage().map((row, index) => ({
+      key: row.kind === 'conflict' ? `conflict-${row.orderId}` : `rejected-${row.rowNumber}-${index}`,
       cells: [
-        String(row.row),
-        { template: this.bulkErrorUnitCellRef, context: { $implicit: row } },
-        row.reason ?? 'Requiere corrección.',
+        row.rowNumber != null ? String(row.rowNumber) : '—',
+        { template: this.bulkReviewUnitCellRef, context: { $implicit: row } },
+        { template: this.bulkReviewDecisionCellRef, context: { $implicit: row } },
       ],
     })),
   );

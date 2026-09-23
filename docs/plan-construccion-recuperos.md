@@ -1,264 +1,138 @@
-# Plan de construcción de Recuperos
+# Plan de cierre de experiencia — Recuperos
 
-Fecha: 20 de septiembre de 2026  
-Estado: plan de implementación  
+Fecha de actualización: 21 de septiembre de 2026
+Estado: experiencia con fixtures — puntos 1 a 4 del plan de continuación cerrados; queda el punto 5 (revisión manual del responsable del proyecto)
 Referencia: `US3764` / `CU-3764-02 — Registrar una orden de recupero manual`.
 
-## Objetivo
+## Propósito de esta etapa
 
-Construir el módulo **Recuperos** para gestionar órdenes de recupero de forma
-manual. Capturas ya establece el patrón de interfaz, estructura de página y
-feedback; Recuperos reutiliza ese patrón sin copiar reglas de negocio ni datos
-que sean exclusivos de Capturas.
+Consolidar el módulo **Recuperos** como una experiencia de producto navegable y verificable con datos de demostración. Capturas aporta el patrón visual de consulta y gestión; Recuperos conserva sus propios datos, campos y estados de interfaz.
 
-El resultado permite al operador crear, consultar, filtrar, revisar y editar
-un recupero cuando la regla lo permita, con información propia de su fuente.
+Esta etapa valida composición, jerarquía, formularios, filtros, evidencias y acciones. No representa todavía una integración productiva ni reglas finales de negocio.
 
-## Alcance
+## Límites explícitos
 
-### Incluido
+### Incluido en esta etapa
 
-- Página de Recuperos con la misma composición general de Capturas.
-- Tabla de recuperos, búsqueda, filtros, ordenamiento, columnas visibles,
-  paginación, descarga y acciones por fila.
-- Registro manual mediante modal o drawer, siguiendo el patrón ya establecido
-  para Capturas.
-- Detalle y edición de campos permitidos.
-- Estados de carga, vacío, sin resultados, error, éxito y confirmación.
-- Preparación de la integración de documentos y trazabilidad.
+- Página de Recuperos, toolbar, tabla, detalle, alta, edición y confirmación.
+- Fixtures propios, estados de carga, vacío, sin resultados, error y feedback.
+- Búsqueda, filtros, orden, paginación, columnas visibles y comportamiento responsive de tabla.
+- Exportación local del conjunto filtrado, sin depender de servicios externos.
+- Flujo visual de registro manual, duplicidad simulada y condición GPS.
+- Experiencia local de evidencias: adjuntar, retirar, identificar el tipo de archivo y abrir en una pestaña nueva los archivos añadidos durante la sesión.
+- Acciones y transiciones como demostración visual, separadas de la regla definitiva de ciclo de vida.
 
-### Fuera de alcance
+### Fuera de alcance en esta etapa
 
-- **No existe carga masiva de recuperos.** No se agrega botón, plantilla,
-  modal, validación de archivos ni lógica de importación para Recuperos.
-- Configuración de plantilla XLSX: pertenece a un módulo específico de
-  configuración, no a Recuperos.
-- Matriz oficial de estados y transiciones: sigue pendiente de Producto y del
-  módulo de Trazabilidad.
-- Tabla de auditoría dentro de Recuperos: la auditoría se visualizará en
-  Trazabilidad.
-- Inventar contratos de unidades, GPS, fuentes, aseguradoras o documentos.
+- API, base de datos, persistencia, autenticación, roles o permisos reales.
+- Almacenamiento real de documentos, enlaces durables, antivirus, progreso de red, validación de contenido o recuperación tras recargar la página.
+- Carga masiva de recuperos, plantilla XLSX e importación de archivos.
+- Matriz oficial de estados, transiciones productivas y auditoría persistida.
+- Catálogos definitivos de unidades, aseguradoras, fuentes, servicios y modalidades.
 
-## Cuándo se inicia un recupero
+## Estado actual
 
-Un recupero se inicia solo desde la acción explícita **Registrar recupero**.
+| Área | Estado | Alcance disponible |
+| --- | --- | --- |
+| Página y toolbar | Construido | Título, descripción, acción primaria, búsqueda y filtros. |
+| Consulta | Construido | Filtros por estado, seguro, modalidad y rango de fechas; orden y paginación. |
+| Tabla | Construido | Columnas configurables, acciones, menú de descarga, responsive y sombra de acciones. |
+| Exportación | Construido (Excel) | Descarga `.xls` del conjunto filtrado y ordenado completo (no solo la página visible), sin librerías ni API — HTML-table servido con extensión `.xls`. Se evitó `xlsx`/SheetJS por una vulnerabilidad alta sin fix en npm. PDF sigue como mensaje informativo, pendiente si se prioriza. |
+| Registro manual | Construido | Unidad, contexto GPS, fuente, seguro, tipo de servicio, modalidad, datos operativos, validación, confirmación y duplicidad simulada. |
+| Detalle y edición | Construido para fixture | Drawer de detalle en pestañas (Información/Historial) y edición condicionada por estados de demostración. |
+| Evidencias | Construido para fixture | Adjuntar, retirar, truncar nombres, icono por tipo, apertura local de archivos recién adjuntados y estado vacío con ayuda visual. Formato/peso/reemplazo/carga fallida siguen documentados como pendientes de reglas de Producto (ver Riesgos). |
+| Estados | Parcial / demostración | Acciones visuales de gestión, recuperación, cierre y anulación (con motivo) ya construidas; no son la matriz oficial — no ampliar por inferencia. |
+| Integración real | No iniciar | Queda fuera de este plan. |
 
-1. El operador entra al módulo Recuperos.
-2. Selecciona **Registrar recupero**.
-3. Identifica una unidad.
-4. El sistema presenta solo la información disponible de la unidad, incluida la
-   condición de GPS si existe o si no existe.
-5. El operador selecciona la fuente, completa los datos propios del recupero y
-   los requisitos aplicables.
-6. Revisa el resumen y confirma.
-7. El sistema valida, crea la orden, muestra el resultado y la incorpora a la
-   tabla.
-
-No se debe iniciar un recupero desde una plantilla, un archivo ni una carga
-masiva.
-
-## Información del recupero
-
-Los nombres definitivos y la obligatoriedad se confirman con el contrato de
-negocio. El módulo debe prever estos grupos, sin convertirlos en valores
-inventados:
-
-| Grupo | Información que se debe definir o validar |
-| --- | --- |
-| Identificación | Unidad, condición de registro, tipo y disponibilidad de GPS. |
-| Fuente | Aseguradora, persona natural u otra fuente permitida; catálogo, contacto y vigencia. |
-| Referencia | Expediente, caso, póliza u otro identificador aplicable a la fuente. |
-| Datos del recupero | Fecha, requisitos, contacto y datos operativos propios de la orden. |
-| Ubicación | Última ubicación disponible; sin GPS se comunica la condición sin inventar una posición. |
-| Evidencias | Tipo documental, obligatoriedad, formato, tamaño y almacenamiento. |
-| Ciclo de vida | Estado inicial, duplicidad, permisos, edición permitida y transiciones. |
-
-## Decisiones que deben estar confirmadas antes de conectar datos reales
-
-- Catálogo de fuentes y aseguradoras.
-- Campos obligatorios por tipo de fuente.
-- Regla para unidad no registrada, sin GPS y con una orden activa.
-- Política de duplicidad.
-- Estado inicial y permisos.
-- Requisitos documentales y servicio de almacenamiento.
-
-Mientras estas reglas no estén aprobadas, la interfaz puede utilizar fixtures
-explícitos para validar la experiencia, pero no debe afirmar que representa la
-regla real.
-
-## Arquitectura del feature
-
-Se sigue `docs/lineamientos-estructura-componentes.md`: un archivo por
-componente, templates y estilos inline en el `.ts`, shell delgado y un service
-compartido por feature.
-
-```text
-src/app/features/recoveries/
-├── recoveries.page.ts
-├── recoveries.service.ts
-├── recoveries-toolbar.component.ts
-├── recoveries-table.component.ts
-├── recoveries-detail-drawer.component.ts
-└── dialogs/
-    ├── recovery-create-dialog.component.ts
-    ├── recovery-edit-dialog.component.ts
-    └── recovery-confirm-dialog.component.ts
-```
-
-El `recoveries.service.ts` contiene signals de registros, filtros, columnas
-visibles, selección activa, estado de carga y mensajes. Los estados de un
-popover o menú de fila se mantienen locales en su componente.
-
-## Componentes y comportamiento
-
-### Página y toolbar
-
-La página replica la estructura de Capturas:
-
-- Título, descripción y acción primaria **Registrar recupero**.
-- Buscador por los campos permitidos del recupero.
-- Filtro de estado y rango de fechas; filtros adicionales solo cuando el
-  contrato de Recuperos los defina.
-- Control de columnas visibles y descarga alineados como utilidades de tabla.
-- No se muestra ninguna acción de carga masiva.
-
-### Tabla de Recuperos
-
-La tabla reutiliza el estándar visual y funcional de Capturas:
-
-- Superficie, bordes, hover, encabezados, paginación y responsive.
-- Sombra de la columna de acciones cuando exista desplazamiento horizontal.
-- Ancho dinámico: la columna con mayor contenido absorbe espacio antes de
-  forzar cortes de línea o scroll.
-- Las columnas obligatorias y configurables se definen con el contrato de
-  Recuperos; Acciones se mantiene disponible.
-- Los valores copiables, como código de unidad o ubicación disponible, usan el
-  patrón ya establecido: texto normal; en hover, subrayado e ícono de copiar;
-  al copiar, feedback de sistema.
+## Flujos vigentes de interfaz
 
 ### Registro manual
 
-El diálogo de creación contiene secciones coherentes y evita repetir
-formularios:
+1. El operador selecciona **Registrar recupero**.
+2. Identifica una unidad y ve únicamente su contexto disponible, incluida la condición de GPS.
+3. Completa fuente, seguro, tipo de servicio, modalidad y los datos aplicables.
+4. Agrega evidencias opcionales si las tiene disponibles.
+5. Revisa la confirmación y registra la orden en la tabla de fixtures.
 
-1. Identificación de unidad.
-2. Fuente de recupero.
-3. Datos propios de la fuente y del recupero.
-4. Requisitos o documentos, cuando el contrato los defina.
-5. Resumen y confirmación.
+### Evidencias
 
-Los campos exclusivos se revelan según la fuente elegida. La condición de una
-unidad sin GPS se muestra como contexto, nunca como una ubicación fabricada.
+- La evidencia es opcional en esta etapa.
+- Los nombres extensos se truncan sin invadir el botón de eliminar.
+- El ícono inicial representa de forma visual el tipo de archivo disponible (imagen, audio, video o documento).
+- Los archivos adjuntados en la sesión pueden abrirse en una nueva pestaña.
+- Los archivos de fixtures no simulan una URL real ni deben prometer descarga.
 
-### Detalle y edición
+### Estados y edición
 
-- El detalle sigue el patrón de drawer o modal de Capturas.
-- Los datos recuperados y no editables son de solo lectura.
-- La edición se habilita únicamente cuando la regla de estado y permisos lo
-  permita.
-- El componente conserva un punto de integración para documentos, pero el
-  flujo documental completo depende de su configuración y almacenamiento.
+- La interfaz puede demostrar acciones de gestión, recuperación, cierre y anulación para validar jerarquía y mensajes.
+- Esas acciones no se consideran reglas aprobadas ni deben ampliarse por inferencia.
+- La edición continúa siendo una experiencia de fixture hasta que exista una definición funcional de campos permitidos y trazabilidad.
 
-## Fases de construcción
+## Plan de continuación
 
-### 1. Definir el contrato funcional
+### 1. Consolidar el formulario de Recuperos — Cerrado
 
-**Qué se hará**
+**Objetivo:** cerrar la experiencia de alta y edición con decisiones de UI coherentes, usando solamente fixtures.
 
-- Definir el modelo de datos, fuentes permitidas y obligatoriedad.
-- Acordar reglas de unidad, GPS, duplicidad y orden activa.
-- Confirmar estado inicial, edición y permisos.
+- [x] Nombres, labels, placeholders, obligatoriedad visible y orden de los campos validados (Tipo de servicio + Modalidad de robo arriba, Seguro + Referencia en medio, Fuente de solicitud abajo, sola).
+- [x] Controles con la anatomía publicada por Comsatel DS; excepciones locales documentadas en `styles.css` (ocultar "x" de selects de selección única, alinear tamaño de label).
+- [x] Comportamiento de selección de fuente (Cliente/Aseguradora) y catálogo de Seguro confirmados para la demostración, sin declararlos valores reales.
 
-**Cierre**
+**Cierre:** el operador entiende qué debe completar y recibe feedback cercano al campo, sin depender de datos externos.
 
-- Cada campo tiene origen, obligatoriedad, validación y mensaje de error.
-- Las casuísticas de fuente inválida, unidad no registrada y sin GPS tienen
-  comportamiento aprobado.
+### 2. Completar la experiencia local de evidencias — Cerrado
 
-### 2. Crear el módulo y estado
+**Objetivo:** terminar el comportamiento visible del bloque documental sin convertirlo en un módulo de almacenamiento.
 
-**Qué se hará**
+- [x] Hover, foco, apertura en nueva pestaña, eliminación y nombres largos revisados.
+- [x] Estado vacío y ayuda del bloque definidos visualmente ("Todavía no adjuntaste ninguna evidencia.", copy de ayuda corregido).
+- [x] Documentado en Riesgos que formato, peso, reemplazo, carga fallida y cambios sin guardar quedan pendientes de reglas de producto, no de implementación técnica real.
 
-- Crear la estructura `recoveries/` y su servicio.
-- Incorporar fixtures propios de Recuperos y adaptadores separados de
-  Capturas.
-- Implementar carga, vacío, error y feedback.
+**Cierre:** la evidencia opcional es clara, accesible y no genera scroll o desbordes con archivos largos.
 
-**Cierre**
+### 3. Revisar acciones de tabla y estados de demostración — Cerrado
 
-- La página es navegable y su shell solo compone hijos.
-- La lógica compartida se concentra en `recoveries.service.ts`.
+**Objetivo:** asegurar que las acciones disponibles sean comprensibles sin presentarlas como una matriz operativa definitiva.
 
-### 3. Construir toolbar y tabla
+- [x] Visibilidad, copy y confirmaciones de editar, pasar a gestión, marcar recuperado, cerrar y anular (con motivo) revisadas, en tabla y en el drawer de detalle.
+- [x] Nota técnica de que las transiciones son fixtures hasta contar con una matriz aprobada, presente en el propio código (`TransitionRecoveryOrderResult`) y en este documento.
+- [x] No se agregaron transiciones ni permisos más allá de los ya construidos.
 
-**Qué se hará**
+**Cierre:** el recorrido se puede demostrar y revisar visualmente sin afirmar reglas que aún no existen.
 
-- Reutilizar el patrón de filtros, buscador, columnas, descarga, tabla y
-  paginación de Capturas.
-- Definir columnas específicas de Recuperos y sus datos de demostración.
-- Aplicar responsive, sombra de acciones y comportamiento de scroll ya
-  validado.
+### 4. Implementar exportación local — Cerrado (Excel)
 
-**Cierre**
+**Objetivo:** completar la descarga desde la tabla sin incorporar servicios ni datos reales.
 
-- Buscar, filtrar, ordenar y configurar columnas solo afecta Recuperos.
-- La tabla mantiene el estándar visual de Capturas.
+- [x] Excel exporta el total filtrado y ordenado, no solo la página visible.
+- [ ] PDF sigue solo como mensaje informativo — no se priorizó en esta ronda; retomar si se necesita.
+- [x] Comunica el resultado (éxito con el total exportado, o error si no hay filas que coincidan con los filtros) de forma cercana a la acción.
 
-### 4. Construir el registro manual
+**Cierre:** la descarga en Excel refleja el conjunto filtrado en la interfaz y funciona de forma local, sin dependencias con vulnerabilidades conocidas.
 
-**Qué se hará**
+### 5. Revisión funcional y visual manual
 
-- Construir el diálogo de alta con sus secciones y campos condicionales.
-- Validar antes de confirmar.
-- Comunicar creación exitosa o error mediante el feedback estándar.
+**Objetivo:** recopilar observaciones de la interfaz antes de cerrar el módulo de experiencia.
 
-**Cierre**
+- Probar visualmente fuentes, unidades con y sin GPS, unidad con orden activa, campos obligatorios, evidencias y tamaños responsive.
+- Registrar solo defectos o decisiones de experiencia; no abrir trabajo de API ni backend a partir de esta revisión.
+- Las pruebas y la compilación las ejecuta el responsable del proyecto.
 
-- No se expone carga masiva.
-- Un campo requerido bloquea el registro y explica qué falta.
-- Un recupero válido aparece en la tabla con tipo Recupero.
+**Cierre:** lista de mejoras de interfaz priorizada y sin pendientes técnicas fuera de alcance mezcladas con el módulo.
 
-### 5. Construir detalle, edición e integración documental
+## Riesgos y decisiones pendientes
 
-**Qué se hará**
+| Tema | Decisión para esta etapa |
+| --- | --- |
+| Catálogos de fuente, seguro y unidad | Se usan fixtures; no se declaran definitivos. |
+| GPS y ubicación | Mostrar solamente el contexto fixture disponible. |
+| Estados | Se validan como interacción visual; matriz oficial pendiente. |
+| Evidencias | UX local; no prometer almacenamiento ni enlace persistente. |
+| Exportación | Se implementa localmente sobre fixtures y filtros actuales; sin API. |
+| Auditoría | Módulo futuro separado; no construir historial ni tabla de auditoría dentro de Recuperos. |
 
-- Construir el detalle y la edición permitida.
-- Preparar el contrato de integración de documentos.
-- Mantener la auditoría fuera de esta superficie.
+## Criterio de cierre de esta etapa
 
-**Cierre**
+La experiencia de Recuperos queda lista para revisión cuando un operador pueda consultar y filtrar fixtures, registrar y editar una orden de demostración, entender el contexto de GPS, gestionar evidencias locales y recorrer las acciones visibles sin desbordes, ambigüedades ni promesas de integración real.
 
-- Los campos no editables son claramente de solo lectura.
-- La edición no permite modificar campos o estados sin autorización.
-
-### 6. Verificar y cerrar
-
-**Qué se hará**
-
-- Probar aseguradora, persona natural y otra fuente permitida.
-- Probar unidad registrada, no registrada, sin GPS y con orden activa.
-- Probar campos incompletos, error de servicio y reintento seguro.
-- Ejecutar `npx tsc --noEmit` y una verificación visual responsive.
-
-**Cierre**
-
-- Las casuísticas acordadas pasan sin crear datos o reglas inexistentes.
-- El módulo queda listo para revisión funcional.
-
-## Riesgos y dependencias
-
-| Elemento | Estado | Impacto |
-| --- | --- | --- |
-| Catálogo de fuentes y aseguradoras | Pendiente | Impide valores definitivos y reglas por fuente. |
-| Contrato de unidad y GPS | Pendiente | Define información recuperada y validaciones. |
-| Matriz de estados | Bloqueada | Impide cerrar estado inicial y transiciones reales. |
-| Documentos y almacenamiento | Pendiente | Limita el flujo documental a una integración preparada. |
-| Trazabilidad | Alcance posterior | La auditoría no se duplica dentro de Recuperos. |
-
-## Criterio de cierre del módulo
-
-Recuperos estará listo cuando el operador pueda registrar manualmente una
-orden con datos y validaciones aprobados, consultarla y filtrarla en una tabla
-propia, editar exclusivamente lo permitido y recibir feedback claro durante
-todo el flujo. El módulo no incluye carga masiva ni transiciones no definidas.
-
+Las integraciones productivas se planificarán en un documento separado cuando Producto defina contratos, catálogos, estados y política documental.

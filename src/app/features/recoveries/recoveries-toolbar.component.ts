@@ -59,6 +59,30 @@ import { RecoveriesService } from './recoveries.service';
           (valueChange)="state.setStatusFilter($event)"
         />
       </div>
+      <div class="toolbar-field toolbar-field--status">
+        <label id="recovery-insurer-label">Seguro</label
+        ><cs-input-dropdown
+          class="status-filter-control"
+          aria-labelledby="recovery-insurer-label"
+          placeholder="Todos los seguros"
+          size="md"
+          [options]="insurerFilterOptions"
+          [value]="state.insurerFilter()"
+          (valueChange)="state.setInsurerFilter($event)"
+        />
+      </div>
+      <div class="toolbar-field toolbar-field--status">
+        <label id="recovery-theft-modality-label">Modalidad</label
+        ><cs-input-dropdown
+          class="status-filter-control"
+          aria-labelledby="recovery-theft-modality-label"
+          placeholder="Todas las modalidades"
+          size="md"
+          [options]="theftModalityFilterOptions"
+          [value]="state.theftModalityFilter()"
+          (valueChange)="state.setTheftModalityFilter($event)"
+        />
+      </div>
       <div class="toolbar-field toolbar-field--date-range">
         <label id="recovery-date-range-label" for="recovery-date-range">Fecha de registro</label>
         <div #recoveryDateTrigger class="date-range-trigger">
@@ -131,7 +155,7 @@ import { RecoveriesService } from './recoveries.service';
       }
       .matrix-toolbar {
         display: grid;
-        grid-template-columns: minmax(220px, 480px) max-content 220px;
+        grid-template-columns: minmax(220px, 480px) max-content max-content max-content 220px;
         align-items: end;
         gap: var(--layout-gap-md);
       }
@@ -195,7 +219,7 @@ import { RecoveriesService } from './recoveries.service';
       }
       @media (max-width: 1080px) {
         .matrix-toolbar {
-          grid-template-columns: minmax(220px, 1fr) max-content;
+          grid-template-columns: minmax(220px, 1fr) max-content max-content max-content;
         }
         .toolbar-field--date-range {
           grid-column: 1 / -1;
@@ -222,6 +246,14 @@ export class RecoveriesToolbarComponent {
   protected readonly statusOptions: InputDropdownOption[] = [
     { label: 'Todos los estados', value: '__all__' },
     ...RECOVERY_ORDER_STATUSES.map((status) => ({ label: status, value: status })),
+  ];
+  protected readonly insurerFilterOptions: InputDropdownOption[] = [
+    { label: 'Todos los seguros', value: '__all__' },
+    ...this.state.insurerOptions,
+  ];
+  protected readonly theftModalityFilterOptions: InputDropdownOption[] = [
+    { label: 'Todas las modalidades', value: '__all__' },
+    ...this.state.theftModalityOptions,
   ];
 
   protected readonly dateRangeOpen = signal(false);

@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
-import { Button, Icon, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Component, effect, inject, signal } from '@angular/core';
+import { Button, Icon, Tab, Tabs, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
 import { SideDrawerComponent } from '../../shared/side-drawer.component';
-import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
+import { RecoveriesService } from './recoveries.service';
 
 /**
  * Drawer de detalle de una orden de recupero. Mismo patrón que
@@ -11,10 +11,18 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
  * la línea de tiempo (`.status-timeline`), que tampoco Capturas comparte.
  * El estado de qué orden está seleccionada vive en `RecoveriesService` porque
  * la tabla (quien abre el detalle) y este drawer son componentes hermanos.
+ *
+ * A diferencia de Capturas, el contenido se divide en dos `cs-tab`
+ * ("Información" e "Historial"): con las transiciones de ciclo de vida que
+ * agrega `RecoveriesService`, el historial de una orden puede crecer bastante
+ * y no tiene sentido que empuje las acciones fuera de la vista inicial. Cuál
+ * pestaña está activa es UI local del drawer — se reinicia a "Información"
+ * cada vez que cambia la orden seleccionada para no dejar a alguien viendo el
+ * historial de un registro distinto sin darse cuenta.
  */
 @Component({
   selector: 'app-recoveries-detail-drawer',
-  imports: [Button, Icon, SideDrawerComponent, Tag],
+  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag],
   template: `
     <app-side-drawer
       [isOpen]="state.detailsOpen()"
@@ -23,7 +31,9 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
       (closed)="state.closeDetails()"
     >
       @if (state.selectedOrder(); as order) {
-        <div class="details-content">
+        <cs-tabs [value]="activeTab()" (valueChange)="activeTab.set($event)">
+          <cs-tab class="recoveries-detail-tab" value="info" label="Información">
+            <div class="details-content">
           <section class="detail-section" aria-labelledby="detail-information-title">
             <h3 id="detail-information-title">Información del recupero</h3>
             <dl class="detail-data">
@@ -39,8 +49,28 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
                 <dd>{{ state.hasGpsOf(order.unitCode) ? 'Disponible' : 'No disponible' }}</dd>
               </div>
               <div>
-                <dt>Fuente</dt>
-                <dd>{{ sourceLabel(order.sourceType) }} — {{ order.sourceName }}</dd>
+                <dt>Fuente de solicitud</dt>
+                <dd>{{ state.sourceLabelOf(order.sourceType) }} — {{ order.sourceName }}</dd>
+              </div>
+              <div>
+                <dt>Seguro</dt>
+                <dd>{{ order.insurerName }}</dd>
+              </div>
+              <div>
+                <dt>Tipo de servicio</dt>
+                <dd>{{ order.serviceType }}</dd>
+              </div>
+              <div>
+                <dt>Modalidad de robo</dt>
+                <dd>
+                  <cs-tag
+                    [value]="order.theftModality"
+                    [severity]="state.theftModalitySeverity(order.theftModality)"
+                    [icon]="state.theftModalityIcon(order.theftModality)"
+                    [rounded]="true"
+                    size="lg"
+                  />
+                </dd>
               </div>
               <div>
                 <dt>{{ state.referenceLabel(order.sourceType) }}</dt>
@@ -113,41 +143,78 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
             </div>
           </section>
 
-          <section class="detail-actions" aria-labelledby="detail-actions-title">
+          <section class="detail-actions detail-actions--last" aria-labelledby="detail-actions-title">
             <h3 id="detail-actions-title">Acciones disponibles</h3>
             <div>
               @if (state.canEdit(order)) {
                 <cs-button variant="default" size="sm" (click)="state.editFromDetails(order)">
                   <cs-icon name="pencil" [size]="16" aria-hidden="true" />Editar recupero
                 </cs-button>
-              } @else {
+              }
+              @if (state.canAdvanceToManagement(order)) {
+                <cs-button
+                  variant="default"
+                  size="sm"
+                  (click)="state.advanceToManagementFromDetails(order)"
+                >
+                  <cs-icon name="route" [size]="16" aria-hidden="true" />Pasar a gestión
+                </cs-button>
+              }
+              @if (state.canMarkRecovered(order)) {
+                <cs-button variant="default" size="sm" (click)="state.markRecoveredFromDetails(order)">
+                  <cs-icon name="check-circle-2" [size]="16" aria-hidden="true" />Marcar como
+                  recuperado
+                </cs-button>
+              }
+              @if (state.canClose(order)) {
+                <cs-button variant="default" size="sm" (click)="state.closeFromDetails(order)">
+                  <cs-icon name="lock" [size]="16" aria-hidden="true" />Cerrar recupero
+                </cs-button>
+              }
+              @if (state.canAnnul(order)) {
+                <cs-button variant="destructive" size="sm" (click)="state.annulFromDetails(order)">
+                  <cs-icon name="x" [size]="16" aria-hidden="true" />Anular recupero
+                </cs-button>
+              }
+              @if (
+                !state.canEdit(order) &&
+                !state.canAdvanceToManagement(order) &&
+                !state.canMarkRecovered(order) &&
+                !state.canClose(order) &&
+                !state.canAnnul(order)
+              ) {
                 <p>No hay acciones disponibles para el estado actual.</p>
               }
             </div>
           </section>
-
-          <section class="status-timeline" aria-labelledby="status-timeline-title">
-            <h3 id="status-timeline-title">Historial del recupero</h3>
-            <ol>
-              @for (
-                entry of state.statusEntries(order);
-                track entry.action + entry.at;
-                let isCurrent = $last
-              ) {
-                <li [class.is-current]="isCurrent">
-                  <span class="status-timeline__marker" aria-hidden="true"></span>
-                  <div class="status-timeline__entry">
-                    <div class="status-timeline__heading">
-                      <strong>{{ entry.action }}</strong>
-                      <time>{{ entry.at }}</time>
-                    </div>
-                    <span>{{ entry.detail }}</span>
-                  </div>
-                </li>
-              }
-            </ol>
-          </section>
-        </div>
+            </div>
+          </cs-tab>
+          <cs-tab class="recoveries-detail-tab" value="historial" label="Historial">
+            <div class="details-content">
+              <section class="status-timeline" aria-labelledby="status-timeline-title">
+                <h3 id="status-timeline-title">Historial del recupero</h3>
+                <ol>
+                  @for (
+                    entry of state.statusEntries(order);
+                    track entry.action + entry.at;
+                    let isCurrent = $last
+                  ) {
+                    <li [class.is-current]="isCurrent">
+                      <span class="status-timeline__marker" aria-hidden="true"></span>
+                      <div class="status-timeline__entry">
+                        <div class="status-timeline__heading">
+                          <strong>{{ entry.action }}</strong>
+                          <time>{{ entry.at }}</time>
+                        </div>
+                        <span>{{ entry.detail }}</span>
+                      </div>
+                    </li>
+                  }
+                </ol>
+              </section>
+            </div>
+          </cs-tab>
+        </cs-tabs>
       }
     </app-side-drawer>
   `,
@@ -155,6 +222,13 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
     `
       :host {
         display: contents;
+      }
+      /* En Capturas "Acciones disponibles" precede a más contenido; aquí, con
+         Historial en su propia pestaña, es la última sección del tab
+         "Información" — el borde inferior de .detail-actions (global,
+         compartido con Capturas) queda huérfano sin nada que separar. */
+      .detail-actions.detail-actions--last {
+        border-block-end: 0;
       }
       .status-timeline {
         display: grid;
@@ -227,8 +301,12 @@ import { RecoveriesService, SOURCE_TYPE_OPTIONS } from './recoveries.service';
 })
 export class RecoveriesDetailDrawerComponent {
   protected readonly state = inject(RecoveriesService);
+  protected readonly activeTab = signal('info');
 
-  protected sourceLabel(sourceType: string): string {
-    return SOURCE_TYPE_OPTIONS.find((option) => option.value === sourceType)?.label ?? sourceType;
+  constructor() {
+    effect(() => {
+      this.state.selectedOrder();
+      this.activeTab.set('info');
+    });
   }
 }

@@ -6,6 +6,7 @@ import {
   RecoveryOrderAuditEntry,
   RecoveryOrderDraft,
   RecoveryOrderEvidence,
+  RecoverySourceSelection,
   RecoverySourceType,
 } from '../../core/recoveries/mock-recovery-orders.service';
 import { UnitOption } from '../../shared/unit-autocomplete.component';
@@ -29,17 +30,30 @@ export type RowsPerPage = 10 | 25 | 50 | 100;
 const DEFAULT_SORT = { key: 'created', order: 'desc' as const };
 
 export const SOURCE_TYPE_OPTIONS: ReadonlyArray<{ label: string; value: RecoverySourceType }> = [
+  { label: 'Cliente', value: 'cliente' },
   { label: 'Aseguradora', value: 'aseguradora' },
-  { label: 'Persona natural', value: 'persona-natural' },
-  { label: 'Otra fuente', value: 'otra' },
 ];
 
-/** Etiqueta del campo de referencia según la fuente elegida — no todas usan "póliza". */
-const REFERENCE_LABEL: Record<RecoverySourceType, string> = {
-  aseguradora: 'N.º de póliza',
-  'persona-natural': 'N.º de expediente',
-  otra: 'Referencia',
-};
+/** Seguro ya asociado a la unidad — independiente de la fuente que solicita el recupero. */
+export const INSURER_OPTIONS: ReadonlyArray<{ label: string; value: string }> = [
+  { label: 'Rímac Seguros', value: 'Rímac Seguros' },
+  { label: 'Pacífico Seguros', value: 'Pacífico Seguros' },
+  { label: 'Mapfre Perú', value: 'Mapfre Perú' },
+];
+
+/** Catálogo de ejemplo mientras Producto confirma los planes reales contratados con la empresa. */
+export const SERVICE_TYPE_OPTIONS: ReadonlyArray<{ label: string; value: string }> = [
+  { label: 'Comsatel Normal', value: 'Comsatel Normal' },
+  { label: 'Comsatel Plus', value: 'Comsatel Plus' },
+  { label: 'Comsatel Enterprise', value: 'Comsatel Enterprise' },
+  { label: 'Otro', value: 'Otro' },
+];
+
+export const THEFT_MODALITY_OPTIONS: ReadonlyArray<{ label: string; value: string }> = [
+  { label: 'Robo con violencia', value: 'Robo con violencia' },
+  { label: 'Robo sin violencia', value: 'Robo sin violencia' },
+  { label: 'Hurto', value: 'Hurto' },
+];
 
 export type RecoveryUnitType = 'VHC' | 'TRK' | 'VAN' | 'BUS' | 'MOT';
 export const RECOVERY_UNIT_TYPE_OPTIONS: ReadonlyArray<
@@ -54,8 +68,10 @@ export const RECOVERY_UNIT_TYPE_OPTIONS: ReadonlyArray<
 
 interface RecoveryUnitFixture extends UnitOption {
   hasGps: boolean;
-  /** Aseguradora ya asociada a la unidad — se sugiere al elegirla, editable después. */
+  /** Seguro ya asociado a la unidad — se sugiere al elegirla, editable después. */
   insurer: string;
+  /** Servicio contratado por el cliente para esta unidad — se sugiere al elegirla, editable después. */
+  serviceType: string;
 }
 
 const UNIT_OPTIONS: RecoveryUnitFixture[] = [
@@ -67,6 +83,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'car',
     hasGps: true,
     insurer: 'Rímac Seguros',
+    serviceType: 'Comsatel Plus',
   },
   {
     code: 'TRK-3002',
@@ -76,6 +93,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'truck',
     hasGps: true,
     insurer: 'Pacífico Seguros',
+    serviceType: 'Comsatel Enterprise',
   },
   {
     code: 'VAN-3003',
@@ -85,6 +103,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'truck',
     hasGps: true,
     insurer: 'Pacífico Seguros',
+    serviceType: 'Comsatel Normal',
   },
   {
     code: 'BUS-3004',
@@ -94,6 +113,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'bus',
     hasGps: false,
     insurer: 'Mapfre Perú',
+    serviceType: 'Comsatel Normal',
   },
   {
     code: 'MOT-3005',
@@ -103,6 +123,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'car',
     hasGps: false,
     insurer: 'Mapfre Perú',
+    serviceType: 'Comsatel Plus',
   },
   {
     code: 'VHC-3009',
@@ -112,6 +133,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
     icon: 'car',
     hasGps: false,
     insurer: 'Rímac Seguros',
+    serviceType: 'Comsatel Enterprise',
   },
 ];
 
@@ -124,6 +146,9 @@ export class RecoveriesService {
   readonly fixturesError = this.api.fixturesError;
 
   readonly sourceTypeOptions = SOURCE_TYPE_OPTIONS;
+  readonly insurerOptions = INSURER_OPTIONS;
+  readonly serviceTypeOptions = SERVICE_TYPE_OPTIONS;
+  readonly theftModalityOptions = THEFT_MODALITY_OPTIONS;
   readonly unitTypeOptions = RECOVERY_UNIT_TYPE_OPTIONS;
   readonly today = this.localToday();
 
@@ -132,6 +157,8 @@ export class RecoveriesService {
   // ---------------------------------------------------------------------
   readonly searchTerm = signal('');
   readonly statusFilter = signal('');
+  readonly insurerFilter = signal('');
+  readonly theftModalityFilter = signal('');
   readonly dateFrom = signal('');
   readonly dateTo = signal('');
   readonly rowsPerPage = signal<RowsPerPage>(10);
@@ -154,6 +181,8 @@ export class RecoveriesService {
   readonly filteredOrders = computed(() => {
     const search = this.searchTerm().trim().toLocaleLowerCase();
     const status = this.statusFilter();
+    const insurer = this.insurerFilter();
+    const theftModality = this.theftModalityFilter();
     const from = this.dateFrom();
     const to = this.dateTo();
     const hasDateRange = !!from && !!to;
@@ -165,6 +194,8 @@ export class RecoveriesService {
             .toLocaleLowerCase()
             .includes(search)) &&
         (!status || order.status === status) &&
+        (!insurer || order.insurerName === insurer) &&
+        (!theftModality || order.theftModality === theftModality) &&
         (!hasDateRange || (registrationDate >= from && registrationDate <= to))
       );
     });
@@ -210,10 +241,15 @@ export class RecoveriesService {
     this.setField('unitCode', unitCode);
     const unit = this.unitOf(unitCode);
     if (!unit) return;
-    // La aseguradora ya asociada a la unidad se sugiere automáticamente al
-    // elegirla — sigue siendo un campo editable, no se bloquea.
-    this.draft.update((draft) => ({ ...draft, sourceType: 'aseguradora', sourceName: unit.insurer }));
-    this.errors.update((errors) => ({ ...errors, sourceType: '', sourceName: '' }));
+    // El seguro y el tipo de servicio ya asociados a la unidad se sugieren
+    // automáticamente al elegirla — siguen siendo campos editables, no se
+    // bloquean. La fuente (quién solicita) es una decisión aparte del
+    // operador y no se toca aquí.
+    this.draft.update((draft) => {
+      const next = { ...draft, insurerName: unit.insurer, serviceType: unit.serviceType };
+      return { ...next, sourceName: this.deriveSourceName(next) };
+    });
+    this.errors.update((errors) => ({ ...errors, insurerName: '', serviceType: '' }));
   }
   setUnitTypeFilter(value: readonly string[]): void {
     const nextTypes = value.filter((type): type is RecoveryUnitType =>
@@ -230,6 +266,14 @@ export class RecoveriesService {
   }
   setStatusFilter(value: string): void {
     this.statusFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
+  setInsurerFilter(value: string): void {
+    this.insurerFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
+  setTheftModalityFilter(value: string): void {
+    this.theftModalityFilter.set(value === '__all__' ? '' : value);
     this.page.set(1);
   }
   clearDateRange(): void {
@@ -275,15 +319,18 @@ export class RecoveriesService {
   }
   private sortValue(order: RecoveryOrder, key: string): string | number {
     if (key === 'created') return this.registrationTimestamp(order.createdAt);
-    if (key === 'recoveredAt') return order.recoveredAt ?? '';
+    // Mismo formato que `createdAt` ("10 sep. 2026, 10:14"): se compara por
+    // timestamp real, no como texto, para que el orden sea cronológico.
+    if (key === 'recoveredAt')
+      return order.recoveredAt ? this.registrationTimestamp(order.recoveredAt) : 0;
     if (key === 'lastLocation') return this.locationOf(order.unitCode)?.lastLocation ?? '';
     return (
       (
         {
           id: order.id,
           unit: order.unitCode,
-          source: order.sourceName,
-          reference: order.referenceNumber,
+          insurer: order.insurerName,
+          theftModality: order.theftModality,
           status: order.status,
         } as Record<string, string>
       )[key] ?? ''
@@ -351,16 +398,42 @@ export class RecoveriesService {
     const unit = this.unitOf(unitCode);
     return unit?.hasGps ? unit : null;
   }
-  referenceLabel(sourceType: RecoverySourceType): string {
-    return REFERENCE_LABEL[sourceType];
+  referenceLabel(sourceType: RecoverySourceSelection): string {
+    return sourceType === 'cliente' ? 'N.º de expediente' : 'N.º de póliza';
   }
-  formatDate(value: string): string {
-    const [year, month, day] = value.split('-');
-    return year && month && day ? `${day}/${month}/${year}` : 'No disponible';
+  sourceLabelOf(sourceType: RecoverySourceSelection): string {
+    return SOURCE_TYPE_OPTIONS.find((option) => option.value === sourceType)?.label ?? sourceType;
   }
-  /** Un recupero registrado no tiene fecha de recuperación hasta que cambie de estado. */
+  /**
+   * Un recupero registrado no tiene fecha de recuperación hasta que cambie
+   * de estado. `recoveredAt` ya se guarda con el mismo formato que
+   * `createdAt` ("10 sep. 2026, 10:14"), así que no requiere reformateo.
+   */
   recoveredLabel(order: RecoveryOrder): string {
-    return order.recoveredAt ? this.formatDate(order.recoveredAt) : 'Pendiente de recuperar';
+    return order.recoveredAt || 'Pendiente de recuperar';
+  }
+  /** Prioridad visual de la modalidad: violencia es la más urgente de triar, hurto la menos. */
+  theftModalityIcon(modality: string): IconName {
+    return (
+      (
+        {
+          'Robo con violencia': 'alert-triangle',
+          'Robo sin violencia': 'circle-alert',
+          Hurto: 'eye-off',
+        } as Record<string, IconName>
+      )[modality] ?? 'circle-alert'
+    );
+  }
+  theftModalitySeverity(modality: string): TagSeverity {
+    return (
+      (
+        {
+          'Robo con violencia': 'danger',
+          'Robo sin violencia': 'warn',
+          Hurto: 'secondary',
+        } as Record<string, TagSeverity>
+      )[modality] ?? 'secondary'
+    );
   }
   statusSeverity(status: string): TagSeverity {
     return (
@@ -382,6 +455,19 @@ export class RecoveriesService {
   }
   canEdit(order: RecoveryOrder): boolean {
     return order.status === 'Registrado' || order.status === 'En gestión';
+  }
+  /** Borrador de ciclo de vida — ver nota en `TransitionRecoveryOrderResult`. */
+  canAdvanceToManagement(order: RecoveryOrder): boolean {
+    return order.status === 'Registrado';
+  }
+  canMarkRecovered(order: RecoveryOrder): boolean {
+    return order.status === 'En gestión';
+  }
+  canClose(order: RecoveryOrder): boolean {
+    return order.status === 'Recuperado';
+  }
+  canAnnul(order: RecoveryOrder): boolean {
+    return order.status !== 'Cerrado' && order.status !== 'Anulado';
   }
 
   // ---------------------------------------------------------------------
@@ -462,8 +548,8 @@ export class RecoveriesService {
   );
   readonly confirmationCopy = computed(() => {
     const draft = this.draft();
-    const sourceLabel = SOURCE_TYPE_OPTIONS.find((o) => o.value === draft.sourceType)?.label ?? draft.sourceType;
-    const context = `Fuente: ${sourceLabel} — ${draft.sourceName} · ${this.referenceLabel(draft.sourceType)}: ${draft.referenceNumber}`;
+    const sourceLabel = this.sourceLabelOf(draft.sourceType);
+    const context = `Fuente de solicitud: ${sourceLabel} — ${draft.sourceName} · ${this.referenceLabel(draft.sourceType)}: ${draft.referenceNumber}`;
     return this.editingOrder()
       ? `¿Confirmas guardar los cambios del recupero ${this.editingOrder()!.id} de la unidad ${draft.unitCode}? ${context}`
       : `¿Confirmas registrar el recupero de la unidad ${draft.unitCode}? ${context}`;
@@ -491,6 +577,9 @@ export class RecoveriesService {
       unitCode: order.unitCode,
       sourceType: order.sourceType,
       sourceName: order.sourceName,
+      insurerName: order.insurerName,
+      serviceType: order.serviceType,
+      theftModality: order.theftModality,
       referenceNumber: order.referenceNumber,
       contactName: order.contactName,
       contactPhone: order.contactPhone,
@@ -507,19 +596,35 @@ export class RecoveriesService {
     }
   }
   setField(field: DraftField, value: string): void {
-    this.draft.update((draft) => ({ ...draft, [field]: value }));
+    this.draft.update((draft) => {
+      const next = { ...draft, [field]: value };
+      // `sourceName` (usado en tabla, búsqueda y confirmación) se deriva de
+      // quién solicita: no se pide de nuevo cuando ya se conoce el seguro o
+      // el contacto del cliente.
+      return field === 'sourceType' || field === 'insurerName' || field === 'contactName'
+        ? { ...next, sourceName: this.deriveSourceName(next) }
+        : next;
+    });
     this.errors.update((errors) => ({ ...errors, [field]: '' }));
   }
-  setSourceType(value: RecoverySourceType): void {
-    this.draft.update((draft) => ({ ...draft, sourceType: value }));
-    this.errors.update((errors) => ({ ...errors, sourceType: '' }));
+  private deriveSourceName(draft: RecoveryOrderDraft): string {
+    if (draft.sourceType === 'aseguradora') return draft.insurerName.trim();
+    if (draft.sourceType === 'cliente') return draft.contactName.trim();
+    return '';
   }
   addEvidence(file: File): void {
-    const evidence: RecoveryOrderEvidence = { fileName: file.name, fileSize: file.size };
+    const evidence: RecoveryOrderEvidence = {
+      fileName: file.name,
+      fileSize: file.size,
+      url: URL.createObjectURL(file),
+    };
     this.draft.update((draft) => ({ ...draft, evidence: [...draft.evidence, evidence] }));
     this.errors.update((errors) => ({ ...errors, evidence: '' }));
   }
   removeEvidence(fileName: string): void {
+    this.draft().evidence
+      .filter((item) => item.fileName === fileName)
+      .forEach((item) => item.url && URL.revokeObjectURL(item.url));
     this.draft.update((draft) => ({
       ...draft,
       evidence: draft.evidence.filter((item) => item.fileName !== fileName),
@@ -577,12 +682,15 @@ export class RecoveriesService {
     const errors: Record<FormField, string> = {
       unitCode: draft.unitCode.trim() ? '' : 'Ingresa el código de la unidad.',
       sourceType: draft.sourceType ? '' : 'Selecciona la fuente del recupero.',
-      sourceName: draft.sourceName.trim() ? '' : 'Ingresa el nombre de la fuente.',
+      sourceName: '',
+      insurerName: draft.insurerName.trim() ? '' : 'Selecciona el seguro de la unidad.',
+      serviceType: draft.serviceType.trim() ? '' : 'Selecciona el tipo de servicio.',
+      theftModality: draft.theftModality ? '' : 'Selecciona la modalidad de robo.',
       referenceNumber: draft.referenceNumber.trim()
         ? ''
         : `Ingresa ${this.referenceLabel(draft.sourceType).toLocaleLowerCase()}.`,
-      contactName: draft.contactName.trim() ? '' : 'Ingresa el nombre de contacto.',
-      contactPhone: draft.contactPhone.trim() ? '' : 'Ingresa un teléfono de contacto.',
+      contactName: '',
+      contactPhone: '',
       operationalNotes: '',
       evidence: '',
     };
@@ -592,8 +700,11 @@ export class RecoveriesService {
   private emptyDraft(): RecoveryOrderDraft {
     return {
       unitCode: '',
-      sourceType: 'aseguradora',
+      sourceType: '',
       sourceName: '',
+      insurerName: '',
+      serviceType: '',
+      theftModality: '',
       referenceNumber: '',
       contactName: '',
       contactPhone: '',
@@ -603,8 +714,8 @@ export class RecoveriesService {
   }
   private emptyErrors(): Record<FormField, string> {
     return {
-      unitCode: '', sourceType: '', sourceName: '', referenceNumber: '',
-      contactName: '', contactPhone: '', operationalNotes: '', evidence: '',
+      unitCode: '', sourceType: '', sourceName: '', insurerName: '', serviceType: '', theftModality: '',
+      referenceNumber: '', contactName: '', contactPhone: '', operationalNotes: '', evidence: '',
     };
   }
   private localToday(): string {
@@ -631,5 +742,166 @@ export class RecoveriesService {
   editFromDetails(order: RecoveryOrder): void {
     this.closeDetails();
     window.setTimeout(() => this.openEdit(order), 220);
+  }
+  advanceToManagementFromDetails(order: RecoveryOrder): void {
+    this.closeDetails();
+    window.setTimeout(() => this.openAdvanceToManagement(order), 220);
+  }
+  markRecoveredFromDetails(order: RecoveryOrder): void {
+    this.closeDetails();
+    window.setTimeout(() => this.openMarkRecovered(order), 220);
+  }
+  closeFromDetails(order: RecoveryOrder): void {
+    this.closeDetails();
+    window.setTimeout(() => this.openCloseConfirmation(order), 220);
+  }
+  annulFromDetails(order: RecoveryOrder): void {
+    this.closeDetails();
+    window.setTimeout(() => this.openAnnulment(order), 220);
+  }
+
+  // ---------------------------------------------------------------------
+  // Transiciones de ciclo de vida sin motivo: avanzar a gestión, marcar
+  // recuperado y cerrar. Comparten un solo diálogo de confirmación
+  // (`RecoveryTransitionDialogComponent`) porque las tres son
+  // estructuralmente idénticas — a diferencia de Capturas, ninguna pide un
+  // campo adicional. Borrador de ciclo de vida, ver nota en
+  // `TransitionRecoveryOrderResult`.
+  // ---------------------------------------------------------------------
+  readonly transitionOrder = signal<RecoveryOrder | null>(null);
+  readonly transitionKind = signal<'advance' | 'recovered' | 'close' | null>(null);
+  readonly transitionOpen = computed(() => this.transitionKind() !== null);
+  private static readonly TRANSITION_COPY: Record<
+    'advance' | 'recovered' | 'close',
+    { title: string; primaryLabel: string; body: (order: RecoveryOrder) => string }
+  > = {
+    advance: {
+      title: 'Pasar a gestión',
+      primaryLabel: 'Pasar a gestión',
+      body: (order) =>
+        `Pasarás el recupero ${order.id} a "En gestión". Esta acción quedará registrada en el historial.`,
+    },
+    recovered: {
+      title: 'Marcar como recuperado',
+      primaryLabel: 'Marcar como recuperado',
+      body: (order) =>
+        `Marcarás el recupero ${order.id} como "Recuperado" y se registrará la fecha de recuperación.`,
+    },
+    close: {
+      title: 'Cerrar recupero',
+      primaryLabel: 'Cerrar recupero',
+      body: (order) =>
+        `Cerrarás el recupero ${order.id}. Esta acción quedará registrada en el historial y el recupero ya no admitirá edición.`,
+    },
+  };
+  readonly transitionTitle = computed(
+    () => RecoveriesService.TRANSITION_COPY[this.transitionKind() ?? 'close'].title,
+  );
+  readonly transitionCopy = computed(() => {
+    const order = this.transitionOrder();
+    const kind = this.transitionKind();
+    return order && kind ? RecoveriesService.TRANSITION_COPY[kind].body(order) : '';
+  });
+  readonly transitionPrimaryAction = computed(() => ({
+    label: RecoveriesService.TRANSITION_COPY[this.transitionKind() ?? 'close'].primaryLabel,
+    loading: this.saving(),
+  }));
+  readonly transitionSecondaryAction = { label: 'Cancelar' };
+
+  openAdvanceToManagement(order: RecoveryOrder): void {
+    if (!this.canAdvanceToManagement(order)) return;
+    this.transitionOrder.set(order);
+    this.transitionKind.set('advance');
+  }
+  openMarkRecovered(order: RecoveryOrder): void {
+    if (!this.canMarkRecovered(order)) return;
+    this.transitionOrder.set(order);
+    this.transitionKind.set('recovered');
+  }
+  openCloseConfirmation(order: RecoveryOrder): void {
+    if (!this.canClose(order)) return;
+    this.transitionOrder.set(order);
+    this.transitionKind.set('close');
+  }
+  closeTransition(): void {
+    if (this.saving()) return;
+    this.transitionKind.set(null);
+    this.transitionOrder.set(null);
+  }
+  async confirmTransition(): Promise<void> {
+    const order = this.transitionOrder();
+    const kind = this.transitionKind();
+    if (!order || !kind) return;
+
+    this.saving.set(true);
+    const result =
+      kind === 'advance'
+        ? await this.api.advanceToManagement(order.id)
+        : kind === 'recovered'
+          ? await this.api.markRecovered(order.id)
+          : await this.api.close(order.id);
+    this.saving.set(false);
+
+    if (result.kind !== 'success') {
+      this.closeTransition();
+      this.showMessage('error', result.message);
+      return;
+    }
+    if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.closeTransition();
+    this.showMessage('success', `El recupero ${result.order.id} quedó como "${result.order.status}".`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Anular recupero — único motivo de transición que pide un dato adicional.
+  // ---------------------------------------------------------------------
+  readonly annulledOrder = signal<RecoveryOrder | null>(null);
+  readonly annulOpen = signal(false);
+  readonly annulmentReason = signal('');
+  readonly annulmentReasonError = signal('');
+  readonly annulPrimaryAction = computed(() => ({
+    label: 'Anular recupero',
+    disabled: !this.annulmentReason().trim(),
+    loading: this.saving(),
+  }));
+  readonly annulSecondaryAction = { label: 'Cancelar' };
+
+  openAnnulment(order: RecoveryOrder): void {
+    if (!this.canAnnul(order)) return;
+    this.annulledOrder.set(order);
+    this.annulmentReason.set('');
+    this.annulmentReasonError.set('');
+    this.annulOpen.set(true);
+  }
+  closeAnnulment(): void {
+    if (this.saving()) return;
+    this.annulOpen.set(false);
+    this.annulledOrder.set(null);
+    this.annulmentReason.set('');
+    this.annulmentReasonError.set('');
+  }
+  setAnnulmentReason(value: string): void {
+    this.annulmentReason.set(value);
+    this.annulmentReasonError.set('');
+  }
+  async confirmAnnulment(): Promise<void> {
+    const order = this.annulledOrder();
+    if (!order) return;
+    if (!this.annulmentReason().trim()) {
+      this.annulmentReasonError.set('Describe el motivo de anulación.');
+      return;
+    }
+
+    this.saving.set(true);
+    const result = await this.api.annul(order.id, this.annulmentReason());
+    this.saving.set(false);
+
+    if (result.kind !== 'success') {
+      this.annulmentReasonError.set(result.message);
+      return;
+    }
+    if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.closeAnnulment();
+    this.showMessage('success', `El recupero ${result.order.id} fue anulado.`);
   }
 }

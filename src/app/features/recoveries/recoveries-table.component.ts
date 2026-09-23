@@ -65,6 +65,14 @@ import { RecoveriesService } from './recoveries.service';
     <ng-template #statusCell let-status
       ><cs-tag [value]="status" [severity]="state.statusSeverity(status)" [rounded]="true" size="lg"
     /></ng-template>
+    <ng-template #theftModalityCell let-modality
+      ><cs-tag
+        [value]="modality"
+        [severity]="state.theftModalitySeverity(modality)"
+        [icon]="state.theftModalityIcon(modality)"
+        [rounded]="true"
+        size="lg"
+    /></ng-template>
     <ng-template #unitCell let-order>
       <span class="recoveries-table__unit">
         <cs-icon [name]="state.unitIconOf(order.unitCode)" [size]="16" aria-hidden="true" />
@@ -196,7 +204,7 @@ import { RecoveriesService } from './recoveries.service';
                 >Reintentar</cs-button
               >
             } @else {
-              <cs-button variant="secondary" size="sm" (click)="state.openCreate()"
+              <cs-button variant="default" size="sm" (click)="state.openCreate()"
                 ><cs-icon name="plus" [size]="16" aria-hidden="true" />Registrar
                 recupero</cs-button
               >
@@ -334,6 +342,7 @@ import { RecoveriesService } from './recoveries.service';
         text-align: center;
       }
       .empty-state p {
+        margin: 0;
         color: var(--color-text-base-subtle);
         font-size: var(--font-size-content-ui);
         line-height: var(--font-line-height-content-ui);
@@ -348,7 +357,7 @@ import { RecoveriesService } from './recoveries.service';
       }
       .empty-state__message > div {
         display: grid;
-        gap: var(--layout-gap-xs);
+        gap: var(--layout-gap-md);
       }
       .empty-state strong {
         color: var(--color-text-base-default);
@@ -420,6 +429,8 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
   ];
 
   @ViewChild('statusCell', { static: true }) private statusCellRef!: TemplateRef<unknown>;
+  @ViewChild('theftModalityCell', { static: true })
+  private theftModalityCellRef!: TemplateRef<unknown>;
   @ViewChild('unitCell', { static: true }) private unitCellRef!: TemplateRef<unknown>;
   @ViewChild('lastLocationCell', { static: true })
   private lastLocationCellRef!: TemplateRef<unknown>;
@@ -430,10 +441,10 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
   private readonly configurableTableColumns: readonly TableColumn[] = [
     { key: 'id', label: 'Orden', width: '128px', isSortable: true },
     { key: 'unit', label: 'Unidad', width: '128px', isSortable: true },
-    { key: 'source', label: 'Fuente', width: '176px', isSortable: true },
-    { key: 'reference', label: 'Referencia', isSortable: true },
+    { key: 'theftModality', label: 'Modalidad de robo', width: '176px', isSortable: true },
+    { key: 'insurer', label: 'Seguro', width: '160px', isSortable: true },
     { key: 'lastLocation', label: 'Última ubicación', isSortable: true },
-    { key: 'recoveredAt', label: 'Fecha de recuperación', width: '160px', isSortable: true },
+    { key: 'recoveredAt', label: 'Fecha de recuperación', width: '176px', isSortable: true },
     { key: 'status', label: 'Estado', width: '160px', isSortable: true },
     { key: 'created', label: 'Registro', width: '176px', isSortable: true },
   ];
@@ -446,10 +457,10 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
   private readonly tableColumnMinWidths: Readonly<Record<string, number>> = {
     id: 128,
     unit: 128,
-    source: 176,
-    reference: 160,
+    theftModality: 176,
+    insurer: 160,
     lastLocation: 272,
-    recoveredAt: 160,
+    recoveredAt: 176,
     status: 160,
     created: 176,
     actions: 72,
@@ -553,8 +564,60 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
   }
   protected requestExport(item: DropdownItem): void {
     this.closeExportMenu();
-    const format = item.value === 'excel' ? 'Excel' : 'PDF';
-    this.state.showMessage('info', `La descarga en ${format} usará los filtros y el orden actuales de recuperos.`);
+    if (item.value === 'excel') {
+      this.exportExcel();
+      return;
+    }
+    this.state.showMessage('info', 'La descarga en PDF usará los filtros y el orden actuales de recuperos.');
+  }
+  /**
+   * Exporta el conjunto filtrado y ordenado (no solo la página visible) como
+   * una tabla HTML con extensión `.xls` — Excel la abre de forma nativa sin
+   * ninguna librería. Se evita `xlsx`/SheetJS a propósito: la versión
+   * publicada en npm tiene una vulnerabilidad alta sin fix disponible
+   * (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9). Ver
+   * `docs/plan-construccion-recuperos.md`, punto 4 del plan de continuación.
+   */
+  private exportExcel(): void {
+    const orders = this.state.sortedOrders();
+    if (!orders.length) {
+      this.state.showMessage('error', 'No hay recuperos que coincidan con los filtros actuales para exportar.');
+      return;
+    }
+
+    const headers = [
+      'Orden', 'Unidad', 'Tipo de servicio', 'Modalidad de robo', 'Seguro', 'Referencia',
+      'Fuente de solicitud', 'Última ubicación', 'Fecha de recuperación', 'Estado', 'Registro',
+    ];
+    const rows = orders.map((order) => [
+      order.id,
+      order.unitCode,
+      order.serviceType,
+      order.theftModality,
+      order.insurerName,
+      order.referenceNumber,
+      `${this.state.sourceLabelOf(order.sourceType)} — ${order.sourceName}`,
+      this.state.locationOf(order.unitCode)?.lastLocation ?? 'Sin GPS disponible',
+      this.state.recoveredLabel(order),
+      order.status,
+      order.createdAt,
+    ]);
+
+    const escapeHtml = (value: string): string =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const tableRows = [headers, ...rows]
+      .map((cells) => `<tr>${cells.map((cell) => `<td>${escapeHtml(String(cell))}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1">${tableRows}</table></body></html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `recuperos-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+    this.state.showMessage('success', `Se descargaron ${orders.length} recuperos con los filtros actuales.`);
   }
   protected toggleActionMenu(orderId: string): void {
     this.actionMenuOrderId.update((activeId) => (activeId === orderId ? null : orderId));
@@ -565,12 +628,29 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
   protected actionItems(order: RecoveryOrder): DropdownItem[] {
     const items: DropdownItem[] = [{ label: 'Ver detalle', value: 'view', icon: 'eye' }];
     if (this.state.canEdit(order)) items.push({ label: 'Editar', value: 'edit', icon: 'pencil' });
+    if (this.state.canAdvanceToManagement(order)) {
+      items.push({ label: 'Pasar a gestión', value: 'advance', icon: 'route' });
+    }
+    if (this.state.canMarkRecovered(order)) {
+      items.push({ label: 'Marcar como recuperado', value: 'recovered', icon: 'check-circle-2' });
+    }
+    if (this.state.canClose(order)) {
+      items.push({ label: 'Cerrar recupero', value: 'close', icon: 'lock' });
+    }
+    if (this.state.canAnnul(order)) {
+      items[items.length - 1].dividerAfter = true;
+      items.push({ label: 'Anular recupero', value: 'annul', icon: 'x', variant: 'destructive' });
+    }
     return items;
   }
   protected runAction(order: RecoveryOrder, item: DropdownItem): void {
     this.closeActionMenu();
     if (item.value === 'view') this.state.openDetails(order);
     if (item.value === 'edit') this.state.openEdit(order);
+    if (item.value === 'advance') this.state.openAdvanceToManagement(order);
+    if (item.value === 'recovered') this.state.openMarkRecovered(order);
+    if (item.value === 'close') this.state.openCloseConfirmation(order);
+    if (item.value === 'annul') this.state.openAnnulment(order);
   }
   private tableCellFor(order: RecoveryOrder, key: string): TableRow['cells'][number] {
     switch (key) {
@@ -578,10 +658,10 @@ export class RecoveriesTableComponent implements AfterViewInit, OnDestroy {
         return order.id;
       case 'unit':
         return { template: this.unitCellRef, context: { $implicit: order } };
-      case 'source':
-        return order.sourceName;
-      case 'reference':
-        return order.referenceNumber;
+      case 'insurer':
+        return order.insurerName;
+      case 'theftModality':
+        return { template: this.theftModalityCellRef, context: { $implicit: order.theftModality } };
       case 'lastLocation':
         return { template: this.lastLocationCellRef, context: { $implicit: order } };
       case 'recoveredAt':

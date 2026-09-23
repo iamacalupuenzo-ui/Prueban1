@@ -1,23 +1,26 @@
 import { Component, inject } from '@angular/core';
 import { Input, Modal } from '@iamacalupuenzo-ui/comsatel-ds';
-import { CaptureOrdersService } from '../capture-orders.service';
+import { RecoveriesService } from '../recoveries.service';
 
 /**
- * Diálogo para anular una captura. Extraído de `new-capture-order.page.ts`
- * (el `cs-modal` "Anular captura", líneas ~1140-1177 del archivo original).
+ * Diálogo para anular un recupero. Espeja
+ * `capture-order-annul-dialog.component.ts` — mismo layout, mismo patrón de
+ * motivo obligatorio — conectado a `RecoveriesService` en vez de
+ * `CaptureOrdersService`. Borrador de ciclo de vida: ver nota en
+ * `TransitionRecoveryOrderResult` (`mock-recovery-orders.service.ts`).
  */
 @Component({
-  selector: 'app-capture-order-annul-dialog',
+  selector: 'app-recovery-annul-dialog',
   imports: [Input, Modal],
   template: `
     <cs-modal
       class="capture-surface-modal"
       [isOpen]="state.annulOpen()"
-      title="Paralizar captura"
+      title="Anular recupero"
       appearance="danger"
       width="md"
       [primaryAction]="state.annulPrimaryAction()"
-      [secondaryAction]="secondaryAction"
+      [secondaryAction]="state.annulSecondaryAction"
       (primaryActionClick)="state.confirmAnnulment()"
       (secondaryActionClick)="state.closeAnnulment()"
       (closed)="state.closeAnnulment()"
@@ -26,14 +29,14 @@ import { CaptureOrdersService } from '../capture-orders.service';
         <div class="dialog-content dialog-content--reason">
           <div class="dialog-copy">
             <p>
-              Paralizarás la orden {{ order.id }}. El registro seguirá disponible para consulta
+              Anularás el recupero {{ order.id }}. El registro seguirá disponible para consulta
               junto con el motivo y el historial de esta acción.
             </p>
           </div>
           <div class="form-field">
-            <label for="annulment-reason">Motivo de paralización</label
+            <label for="recovery-annulment-reason">Motivo de anulación</label
             ><cs-input
-              id="annulment-reason"
+              id="recovery-annulment-reason"
               fieldSize="md"
               placeholder="Describe el motivo"
               [value]="state.annulmentReason()"
@@ -83,7 +86,6 @@ import { CaptureOrdersService } from '../capture-orders.service';
     `,
   ],
 })
-export class CaptureOrderAnnulDialogComponent {
-  protected readonly state = inject(CaptureOrdersService);
-  protected readonly secondaryAction = { label: 'Cancelar' };
+export class RecoveryAnnulDialogComponent {
+  protected readonly state = inject(RecoveriesService);
 }

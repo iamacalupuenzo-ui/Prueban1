@@ -5,6 +5,7 @@ import { CaptureOrderDetailDrawerComponent } from './capture-order-detail-drawer
 import { CaptureOrderTableComponent } from './capture-order-table.component';
 import { CaptureOrderToolbarComponent } from './capture-order-toolbar.component';
 import { CaptureOrderAnnulDialogComponent } from './dialogs/capture-order-annul-dialog.component';
+import { CaptureOrderBulkHistoryDialogComponent } from './dialogs/capture-order-bulk-history-dialog.component';
 import { CaptureOrderBulkUploadDialogComponent } from './dialogs/capture-order-bulk-upload-dialog.component';
 import { CaptureOrderCloseDialogComponent } from './dialogs/capture-order-close-dialog.component';
 import { CaptureOrderFormDialogComponent } from './dialogs/capture-order-form-dialog.component';
@@ -24,10 +25,11 @@ import { CaptureOrderObservationDialogComponent } from './dialogs/capture-order-
   imports: [
     Button,
     CaptureOrderAnnulDialogComponent,
+    CaptureOrderBulkHistoryDialogComponent,
     CaptureOrderBulkUploadDialogComponent,
     CaptureOrderCloseDialogComponent,
     CaptureOrderDetailDrawerComponent,
-    CaptureOrderFormDialogComponent,
+    // CaptureOrderFormDialogComponent, — registro/edición individual fuera de alcance, ver docs/arquitectura-new-capture-order.md#capturas-sin-registro-individual.
     CaptureOrderObservationDialogComponent,
     CaptureOrderTableComponent,
     CaptureOrderToolbarComponent,
@@ -74,18 +76,30 @@ import { CaptureOrderObservationDialogComponent } from './dialogs/capture-order-
             </p>
           </div>
           <div class="page-header__actions">
-            <cs-button variant="default" size="sm" (click)="state.openBulkUpload()"
+            <cs-button variant="default" size="sm" (click)="state.openBulkHistory()"
+              ><cs-icon name="file-text" [size]="16" aria-hidden="true" />Historial de
+              cargas</cs-button
+            >
+            <cs-button variant="primary" size="sm" (click)="state.openBulkUpload()"
               ><cs-icon name="layers" [size]="16" aria-hidden="true" />Carga masiva de
               capturas</cs-button
-            ><cs-button variant="primary" size="sm" (click)="state.openForm()"
+            >
+            <!--
+              "Registrar captura" (alta individual) oculto a pedido: Capturas
+              no tendrá registro individual de datos, solo carga masiva. Se
+              deja comentado, no borrado — ver
+              docs/arquitectura-new-capture-order.md#capturas-sin-registro-individual.
+            <cs-button variant="primary" size="sm" (click)="state.openForm()"
               ><cs-icon name="plus" [size]="16" aria-hidden="true" />Registrar captura</cs-button
             >
+            -->
           </div>
         </header>
         <app-capture-order-toolbar />
         <app-capture-order-table />
       </section>
-      <app-capture-order-form-dialog />
+      <!-- <app-capture-order-form-dialog /> — ver nota junto al botón "Registrar captura" arriba. -->
+      <app-capture-order-bulk-history-dialog />
       <app-capture-order-bulk-upload-dialog />
       <app-capture-order-close-dialog />
       <app-capture-order-detail-drawer />

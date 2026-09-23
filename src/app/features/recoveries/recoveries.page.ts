@@ -4,9 +4,11 @@ import { RecoveriesService } from './recoveries.service';
 import { RecoveriesDetailDrawerComponent } from './recoveries-detail-drawer.component';
 import { RecoveriesTableComponent } from './recoveries-table.component';
 import { RecoveriesToolbarComponent } from './recoveries-toolbar.component';
+import { RecoveryAnnulDialogComponent } from './dialogs/recovery-annul-dialog.component';
 import { RecoveryConfirmDialogComponent } from './dialogs/recovery-confirm-dialog.component';
 import { RecoveryCreateDialogComponent } from './dialogs/recovery-create-dialog.component';
 import { RecoveryEditDialogComponent } from './dialogs/recovery-edit-dialog.component';
+import { RecoveryTransitionDialogComponent } from './dialogs/recovery-transition-dialog.component';
 
 /**
  * Shell de la pantalla de Recuperos. Orquesta el layout de la matriz, inyecta
@@ -23,9 +25,11 @@ import { RecoveryEditDialogComponent } from './dialogs/recovery-edit-dialog.comp
     RecoveriesDetailDrawerComponent,
     RecoveriesTableComponent,
     RecoveriesToolbarComponent,
+    RecoveryAnnulDialogComponent,
     RecoveryConfirmDialogComponent,
     RecoveryCreateDialogComponent,
     RecoveryEditDialogComponent,
+    RecoveryTransitionDialogComponent,
   ],
   template: `
     <main class="recovery-matrix" aria-labelledby="recovery-title">
@@ -79,6 +83,8 @@ import { RecoveryEditDialogComponent } from './dialogs/recovery-edit-dialog.comp
       <app-recovery-create-dialog />
       <app-recovery-edit-dialog />
       <app-recovery-confirm-dialog />
+      <app-recovery-transition-dialog />
+      <app-recovery-annul-dialog />
       <app-recoveries-detail-drawer />
     </main>
   `,

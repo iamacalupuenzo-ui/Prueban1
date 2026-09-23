@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { Button, Icon, Input, Select, SelectOption } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, Icon, Input, Select, SelectOption, type IconName } from '@iamacalupuenzo-ui/comsatel-ds';
 import { RecoveryOrderEvidence } from '../../../core/recoveries/mock-recovery-orders.service';
 import { SideDrawerComponent } from '../../../shared/side-drawer.component';
 import { UnitAutocompleteComponent } from '../../../shared/unit-autocomplete.component';
@@ -77,33 +77,52 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
                 </div>
               </div>
             }
-            <div class="form-field">
-              <cs-select
-                class="recovery-source-select"
-                label="Fuente del recupero"
-                placeholder="Selecciona una fuente"
-                size="md"
-                [options]="sourceOptions"
-                [value]="state.draft().sourceType"
-                (valueChange)="setSourceType(asText($event))"
-                [required]="true"
-              />
+            <div class="two-col-grid">
+              <div class="form-field">
+                <cs-select
+                  class="recovery-service-type-select"
+                  label="Tipo de servicio"
+                  placeholder="Selecciona un tipo de servicio"
+                  size="md"
+                  [options]="serviceTypeOptions"
+                  [value]="state.draft().serviceType"
+                  (valueChange)="setField('serviceType', asText($event))"
+                  [required]="true"
+                />
+                @if (state.errors().serviceType) {
+                  <p class="field-error" role="alert">{{ state.errors().serviceType }}</p>
+                }
+              </div>
+              <div class="form-field">
+                <cs-select
+                  class="recovery-theft-modality-select"
+                  label="Modalidad de robo"
+                  placeholder="Selecciona una modalidad"
+                  size="md"
+                  [options]="theftModalityOptions"
+                  [value]="state.draft().theftModality"
+                  (valueChange)="setField('theftModality', asText($event))"
+                  [required]="true"
+                />
+                @if (state.errors().theftModality) {
+                  <p class="field-error" role="alert">{{ state.errors().theftModality }}</p>
+                }
+              </div>
             </div>
             <div class="two-col-grid">
               <div class="form-field">
-                <label for="recovery-source-name">Nombre de la fuente <span class="required-marker" aria-hidden="true">*</span></label>
-                <cs-input
-                  id="recovery-source-name"
-                  name="recovery-source-name"
-                  fieldSize="md"
-                  autocomplete="off"
-                  [value]="state.draft().sourceName"
-                  (valueChange)="setField('sourceName', $event)"
-                  [invalid]="state.errors().sourceName !== ''"
+                <cs-select
+                  class="recovery-insurer-select"
+                  label="Seguro"
+                  placeholder="Selecciona un seguro"
+                  size="md"
+                  [options]="insurerOptions"
+                  [value]="state.draft().insurerName"
+                  (valueChange)="setField('insurerName', asText($event))"
                   [required]="true"
                 />
-                @if (state.errors().sourceName) {
-                  <p class="field-error" role="alert">{{ state.errors().sourceName }}</p>
+                @if (state.errors().insurerName) {
+                  <p class="field-error" role="alert">{{ state.errors().insurerName }}</p>
                 }
               </div>
               <div class="form-field">
@@ -113,49 +132,58 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
                   name="recovery-reference"
                   fieldSize="md"
                   autocomplete="off"
+                  [placeholder]="'Ingresa ' + state.referenceLabel(state.draft().sourceType).toLocaleLowerCase()"
                   [value]="state.draft().referenceNumber"
                   (valueChange)="setField('referenceNumber', $event)"
                   [invalid]="state.errors().referenceNumber !== ''"
+                  aria-errormessage="recovery-reference-error"
                   [required]="true"
                 />
                 @if (state.errors().referenceNumber) {
-                  <p class="field-error" role="alert">{{ state.errors().referenceNumber }}</p>
+                  <p id="recovery-reference-error" class="field-error" role="alert">{{ state.errors().referenceNumber }}</p>
                 }
               </div>
             </div>
+            <div class="form-field">
+              <cs-select
+                class="recovery-source-select"
+                label="Fuente de solicitud"
+                placeholder="Selecciona una fuente"
+                size="md"
+                [options]="sourceOptions"
+                [value]="state.draft().sourceType"
+                (valueChange)="setField('sourceType', asText($event))"
+                [required]="true"
+              />
+              @if (state.errors().sourceType) {
+                <p class="field-error" role="alert">{{ state.errors().sourceType }}</p>
+              }
+            </div>
             <div class="two-col-grid">
               <div class="form-field">
-                <label for="recovery-contact-name">Nombre de contacto <span class="required-marker" aria-hidden="true">*</span></label>
+                <label for="recovery-contact-name">Nombre de contacto</label>
                 <cs-input
                   id="recovery-contact-name"
                   name="recovery-contact-name"
                   fieldSize="md"
                   autocomplete="off"
+                  placeholder="Ingresa el nombre de contacto"
                   [value]="state.draft().contactName"
                   (valueChange)="setField('contactName', $event)"
-                  [invalid]="state.errors().contactName !== ''"
-                  [required]="true"
                 />
-                @if (state.errors().contactName) {
-                  <p class="field-error" role="alert">{{ state.errors().contactName }}</p>
-                }
               </div>
               <div class="form-field">
-                <label for="recovery-contact-phone">Teléfono de contacto <span class="required-marker" aria-hidden="true">*</span></label>
+                <label for="recovery-contact-phone">Teléfono de contacto</label>
                 <cs-input
                   id="recovery-contact-phone"
                   name="recovery-contact-phone"
                   type="tel"
                   fieldSize="md"
                   autocomplete="off"
+                  placeholder="Ingresa el teléfono de contacto"
                   [value]="state.draft().contactPhone"
                   (valueChange)="setField('contactPhone', $event)"
-                  [invalid]="state.errors().contactPhone !== ''"
-                  [required]="true"
                 />
-                @if (state.errors().contactPhone) {
-                  <p class="field-error" role="alert">{{ state.errors().contactPhone }}</p>
-                }
               </div>
             </div>
             <div class="form-field">
@@ -175,7 +203,7 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
               <div class="evidence-section__header">
                 <div>
                   <h2 id="evidence-title">Evidencias</h2>
-                  <p>Opcional por ahora. Adjunta lo que tengas disponible; el flujo documental completo se habilitará más adelante.</p>
+                  <p>Adjunta fotos, videos o documentos que respalden el recupero. Es opcional.</p>
                 </div>
                 <input #evidenceInput class="visually-hidden" type="file" (change)="addEvidence($event)" />
                 <cs-button variant="default" size="sm" (click)="evidenceInput.click()">
@@ -186,14 +214,25 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
                 <ul class="evidence-list">
                   @for (item of state.draft().evidence; track item.fileName) {
                     <li>
-                      <cs-icon name="file-text" [size]="16" aria-hidden="true" />
-                      <span>{{ item.fileName }}</span>
+                      @if (item.url) {
+                        <a class="evidence-list__link" [href]="item.url" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Abrir ' + item.fileName + ' en una nueva pestaña'">
+                          <cs-icon [name]="evidenceIcon(item.fileName)" [size]="16" aria-hidden="true" />
+                          <span>{{ item.fileName }}</span>
+                        </a>
+                      } @else {
+                        <div class="evidence-list__file">
+                          <cs-icon [name]="evidenceIcon(item.fileName)" [size]="16" aria-hidden="true" />
+                          <span>{{ item.fileName }}</span>
+                        </div>
+                      }
                       <button type="button" class="evidence-list__remove" [attr.aria-label]="'Quitar ' + item.fileName" (click)="removeEvidence(item)">
                         <cs-icon name="trash-2" [size]="14" aria-hidden="true" />
                       </button>
                     </li>
                   }
                 </ul>
+              } @else {
+                <p class="evidence-empty">Todavía no adjuntaste ninguna evidencia.</p>
               }
             </section>
           </div>
@@ -263,7 +302,9 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
       }
       .evidence-section {
         display: grid;
-        gap: var(--layout-gap-md);
+        gap: var(--layout-gap-lg);
+        margin-top: var(--layout-gap-md);
+        min-width: 0;
       }
       .evidence-section__header {
         display: flex;
@@ -279,22 +320,36 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
         line-height: var(--font-line-height-content-caption);
       }
       .evidence-section__header p {
-        margin: var(--layout-gap-2xs) 0 0;
+        margin: var(--layout-gap-xs) 0 0;
         color: var(--color-text-base-subtle);
         font-size: var(--font-size-content-note);
         line-height: var(--font-line-height-content-note);
+      }
+      .evidence-empty {
+        margin: 0;
+        padding: var(--layout-padding-lg);
+        border: var(--layout-border-thin) dashed var(--color-border-divider);
+        border-radius: var(--radius-md);
+        color: var(--color-text-base-subtle);
+        font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
+        text-align: center;
       }
       .evidence-list {
         display: grid;
         gap: var(--layout-gap-sm);
         margin: 0;
         padding: 0;
+        min-width: 0;
         list-style: none;
       }
       .evidence-list li {
         display: flex;
         align-items: center;
-        gap: var(--layout-gap-sm);
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        gap: 0;
         padding: var(--layout-padding-sm) var(--layout-padding-md);
         border: var(--layout-border-thin) solid var(--color-border-divider);
         border-radius: var(--radius-md);
@@ -302,7 +357,29 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
         color: var(--color-text-base-default);
         font-size: var(--font-size-content-note);
       }
-      .evidence-list li > span {
+      .evidence-list__link,
+      .evidence-list__file {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        gap: var(--layout-gap-sm);
+      }
+      .evidence-list__link {
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .evidence-list__link:hover span {
+        text-decoration: underline;
+      }
+      .evidence-list__link:focus-visible {
+        outline: none;
+        border-radius: var(--radius-sm);
+        box-shadow: 0 0 0 var(--layout-border-thick) var(--color-border-focused);
+      }
+      .evidence-list__link > span,
+      .evidence-list__file > span {
         flex: 1;
         min-width: 0;
         overflow: hidden;
@@ -310,6 +387,8 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
         white-space: nowrap;
       }
       .evidence-list__remove {
+        flex: 0 0 auto;
+        margin-left: var(--layout-gap-lg);
         display: grid;
         place-items: center;
         padding: var(--layout-padding-2xs);
@@ -324,7 +403,7 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
       }
       .selected-unit-summary {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: var(--layout-gap-lg);
         padding: var(--layout-padding-md) var(--layout-padding-lg);
         border: var(--layout-border-thin) solid var(--color-border-divider);
@@ -337,30 +416,41 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
         gap: var(--layout-gap-2xs);
         min-width: 0;
       }
+      .selected-unit-summary__identity {
+        flex: 0 0 auto;
+      }
+      .selected-unit-summary__location {
+        flex: 1 1 0;
+      }
       .selected-unit-summary p {
         margin: 0;
         color: var(--color-text-base-subtlest);
-        font-size: var(--font-size-label-small);
-        text-transform: uppercase;
-        letter-spacing: .04em;
+        font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
+        letter-spacing: var(--font-letter-spacing-content);
       }
       .selected-unit-summary__identity span {
         display: flex;
-        align-items: baseline;
-        gap: var(--layout-gap-sm);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--layout-gap-2xs);
         color: var(--color-text-base-subtle);
         font-size: var(--font-size-content-note);
+        line-height: var(--font-line-height-content-note);
       }
       .selected-unit-summary__identity strong {
         color: var(--color-text-base-default);
-        font-size: var(--font-size-content-ui);
+        font-size: inherit;
+        font-weight: var(--font-weight-accent);
       }
       .selected-unit-summary__location span {
         overflow: hidden;
-        color: var(--color-text-base-subtle);
+        color: var(--color-text-base-default);
         font-size: var(--font-size-content-note);
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        line-height: var(--font-line-height-content-note);
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
       }
       .selected-unit-summary__divider {
         align-self: stretch;
@@ -388,6 +478,17 @@ import { DraftField, RecoveriesService } from '../recoveries.service';
 export class RecoveryCreateDialogComponent {
   protected readonly state = inject(RecoveriesService);
   protected readonly sourceOptions: SelectOption[] = [...this.state.sourceTypeOptions];
+  protected readonly insurerOptions: SelectOption[] = [...this.state.insurerOptions];
+  protected readonly serviceTypeOptions: SelectOption[] = [...this.state.serviceTypeOptions];
+  protected readonly theftModalityOptions: SelectOption[] = [...this.state.theftModalityOptions];
+
+  protected evidenceIcon(fileName: string): IconName {
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) return 'image';
+    if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(extension)) return 'picture-in-picture-2';
+    if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) return 'activity';
+    return 'file-text';
+  }
 
   protected onSubmit(event: Event): void {
     event.preventDefault();
@@ -398,9 +499,6 @@ export class RecoveryCreateDialogComponent {
   }
   protected setField(field: DraftField, value: string): void {
     this.state.setField(field, value);
-  }
-  protected setSourceType(value: string): void {
-    this.state.setSourceType(value as 'aseguradora' | 'persona-natural' | 'otra');
   }
   protected addEvidence(event: Event): void {
     const input = event.target as HTMLInputElement;

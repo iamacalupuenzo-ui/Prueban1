@@ -1,12 +1,23 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { IconName, SortOrder, TagSeverity } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
-  CaptureDocumentType,
-  CaptureOrder,
-  CaptureOrderAuditEntry,
-  CaptureOrderDraft,
+  CAPTURE_DOCUMENT_DEFINITIONS,
+  sapContractStatusFor,
+  type BulkConflictPreviewRow,
+  type BulkReconciliationUnit,
+  type CaptureContractStatus,
+  type CaptureDocumentType,
+  type CaptureFinanciera,
+  type CaptureOrder,
+  type CaptureOrderAuditEntry,
+  type CaptureOrderDraft,
+  type CaptureOrderStatus,
+  type ResolveConflictChoice,
   MockCaptureOrdersService,
 } from '../../core/orders/mock-capture-orders.service';
+import { detectCaptureFormat, parseCaptureRows, type ParsedCaptureRow } from '../../core/orders/capture-order-formats';
+import { readCaptureWorkbook } from '../../core/orders/capture-order-workbook';
+import { FleetTelemetryService, deviceInfoFor } from '../../core/fleet/fleet-telemetry.service';
 import { UnitOption } from '../../shared/unit-autocomplete.component';
 import { UnitTypeFilterOption } from '../../shared/unit-type-multi-select.component';
 
@@ -24,7 +35,25 @@ import { UnitTypeFilterOption } from '../../shared/unit-type-multi-select.compon
  * correspondiente en `docs/arquitectura-new-capture-order.md`.
  */
 
-export type DraftField = Exclude<keyof CaptureOrderDraft, 'documents'>;
+/**
+ * Los campos que la carga masiva agrega a `CaptureOrderDraft` (motor,
+ * chasis, cliente, marca/modelo, contrato, última posición) no los toca el
+ * formulario individual — hoy fuera de alcance, ver comentario en
+ * `emptyDraft()` — así que no participan del borrador/errores de ese
+ * formulario.
+ */
+export type DraftField = Exclude<
+  keyof CaptureOrderDraft,
+  | 'documents'
+  | 'engineCode'
+  | 'chassisCode'
+  | 'clientName'
+  | 'marca'
+  | 'modelo'
+  | 'contractStatus'
+  | 'lastPosition'
+  | 'lastPositionAt'
+>;
 export type FormField = DraftField | 'documents';
 export type RowsPerPage = 10 | 25 | 50 | 100;
 export type UnitType = 'VHC' | 'TRK' | 'VAN' | 'BUS';
@@ -34,9 +63,41 @@ export type BulkValidationRow = {
   row: number;
   unitCode: string;
   source: string;
+  financiera: CaptureFinanciera;
   outcome: 'valid' | 'rejected';
   reason?: string;
+  engineCode?: string;
+  chassisCode?: string;
+  clientName?: string;
+  marca?: string;
+  modelo?: string;
+  caseNumber?: string;
+  receivedOn?: string;
+  contractStatus?: CaptureContractStatus;
+  lastPosition?: [number, number];
+  lastPositionAt?: string;
 };
+
+/**
+ * Una sola tabla de revisión combina dos tipos de fila: "rejected" (error
+ * real del archivo, p. ej. duplicado dentro del mismo archivo) y
+ * "conflict" (el sistema y el archivo no coinciden, requiere elegir
+ * Sistema/Archivo). `rowNumber` es siempre la fila real del archivo
+ * (Excel), no un índice de esta tabla — puede no ser consecutiva (fila 50,
+ * 51, 64...). En "conflict" puede ser `null` cuando la unidad justamente
+ * no está en el archivo (ausente, ya no la piden).
+ */
+export type BulkReviewRow =
+  | { kind: 'rejected'; rowNumber: number; unitCode: string; reason: string }
+  | {
+      kind: 'conflict';
+      rowNumber: number | null;
+      unitCode: string;
+      note: string;
+      orderId: string;
+      currentStatus: CaptureOrderStatus;
+      acceptedStatus: CaptureOrderStatus;
+    };
 
 const DEFAULT_SORT = { key: 'created', order: 'desc' as const };
 const BULK_ERROR_PAGE_SIZE = 5;
@@ -132,82 +193,24 @@ const DEMO_OWNERS = [
   'Patricia Vega',
 ] as const;
 
-const BULK_VALIDATION_ROWS: readonly BulkValidationRow[] = [
-  { row: 2, unitCode: 'VHC-1024', source: 'Centro de operaciones', outcome: 'valid' },
-  { row: 3, unitCode: 'VHC-1041', source: 'Cliente', outcome: 'valid' },
-  { row: 4, unitCode: 'TRK-2087', source: 'Autoridad competente', outcome: 'valid' },
-  { row: 5, unitCode: 'TRK-2143', source: 'Operación en campo', outcome: 'valid' },
-  { row: 6, unitCode: 'VAN-0412', source: 'Centro de operaciones', outcome: 'valid' },
-  { row: 7, unitCode: 'BUS-0379', source: 'Cliente', outcome: 'valid' },
-  { row: 8, unitCode: 'VHC-1158', source: 'Centro de operaciones', outcome: 'valid' },
-  { row: 9, unitCode: 'TRK-2206', source: 'Cliente', outcome: 'valid' },
-  { row: 10, unitCode: 'VAN-0534', source: 'Autoridad competente', outcome: 'valid' },
-  { row: 11, unitCode: 'BUS-0416', source: 'Operación en campo', outcome: 'valid' },
-  {
-    row: 12,
-    unitCode: 'VHC-3001',
-    source: 'Centro de operaciones',
-    outcome: 'rejected',
-    reason: 'Ya tiene la orden CAP-0101 en estado Registrada.',
-  },
-  {
-    row: 13,
-    unitCode: 'TRK-3002',
-    source: 'Cliente',
-    outcome: 'rejected',
-    reason: 'Ya tiene la orden CAP-0102 en estado En revisión.',
-  },
-  {
-    row: 14,
-    unitCode: 'VAN-3003',
-    source: 'Autoridad competente',
-    outcome: 'rejected',
-    reason: 'Ya tiene la orden CAP-0103 con observación.',
-  },
-  {
-    row: 15,
-    unitCode: 'VHC-1024',
-    source: 'Centro de operaciones',
-    outcome: 'rejected',
-    reason: 'La unidad está repetida dentro del archivo.',
-  },
-  {
-    row: 16,
-    unitCode: 'VHC-3005',
-    source: 'Centro de operaciones',
-    outcome: 'rejected',
-    reason: 'Ya tiene una captura activa en estado Registrada.',
-  },
-  {
-    row: 17,
-    unitCode: 'TRK-3006',
-    source: 'Cliente',
-    outcome: 'rejected',
-    reason: 'Ya tiene una captura activa en estado En revisión.',
-  },
-  {
-    row: 18,
-    unitCode: 'VAN-3007',
-    source: 'Autoridad competente',
-    outcome: 'rejected',
-    reason: 'Ya tiene una captura activa con observación.',
-  },
-  {
-    row: 19,
-    unitCode: 'TRK-2087',
-    source: 'Operación en campo',
-    outcome: 'rejected',
-    reason: 'La unidad está repetida dentro del archivo.',
-  },
-];
-
 @Injectable({ providedIn: 'root' })
 export class CaptureOrdersService {
   private readonly api = inject(MockCaptureOrdersService);
+  private readonly fleet = inject(FleetTelemetryService);
 
   /** Passthrough de la carga de fixtures: la tabla y el estado vacío la consumen directo. */
   readonly fixturesLoading = this.api.fixturesLoading;
   readonly fixturesError = this.api.fixturesError;
+  /** Passthrough del historial de cargas masivas — lo consume el diálogo de historial. */
+  readonly bulkUploadBatches = this.api.bulkUploadBatches;
+  readonly bulkHistoryOpen = signal(false);
+
+  openBulkHistory(): void {
+    this.bulkHistoryOpen.set(true);
+  }
+  closeBulkHistory(): void {
+    this.bulkHistoryOpen.set(false);
+  }
 
   readonly unitTypeOptions = UNIT_TYPE_OPTIONS;
   readonly today = this.localToday();
@@ -218,6 +221,7 @@ export class CaptureOrdersService {
   // ---------------------------------------------------------------------
   readonly searchTerm = signal('');
   readonly statusFilter = signal('');
+  readonly contractFilter = signal('');
   readonly unitTypeFilter = signal<UnitType[]>([]);
   readonly dateFrom = signal('');
   readonly dateTo = signal('');
@@ -242,6 +246,7 @@ export class CaptureOrdersService {
   readonly filteredOrders = computed(() => {
     const search = this.searchTerm().trim().toLocaleLowerCase();
     const status = this.statusFilter();
+    const contract = this.contractFilter();
     const from = this.dateFrom();
     const to = this.dateTo();
     const hasDateRange = !!from && !!to;
@@ -253,6 +258,7 @@ export class CaptureOrdersService {
             .toLocaleLowerCase()
             .includes(search)) &&
         (!status || order.status === status) &&
+        (!contract || this.contractStatusOf(order.unitCode) === contract) &&
         (!hasDateRange || (registrationDate >= from && registrationDate <= to))
       );
     });
@@ -303,6 +309,10 @@ export class CaptureOrdersService {
   }
   setStatusFilter(value: string): void {
     this.statusFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
+  setContractFilter(value: string): void {
+    this.contractFilter.set(value === '__all__' ? '' : value);
     this.page.set(1);
   }
   setUnitTypeFilter(value: readonly string[]): void {
@@ -357,66 +367,71 @@ export class CaptureOrdersService {
   }
   private sortValue(order: CaptureOrder, key: string): string | number {
     if (key === 'created') return this.registrationTimestamp(order.createdAt);
+    if (key === 'documents') return this.documentsCompleteCountOf(order);
     return (
       (
         {
-          id: order.id,
           unit: order.unitCode,
-          owner: this.ownerOf(order.unitCode),
+          financiera: order.financiera,
           lastLocation: this.locationOf(order.unitCode)?.lastLocation ?? '',
-          source: order.source,
+          engine: this.engineCodeOf(order.unitCode),
+          contract: this.contractStatusOf(order.unitCode),
           status: order.status,
         } as Record<string, string>
       )[key] ?? ''
     );
   }
+  /**
+   * Meses en 0-index para `registrationTimestamp`. `sep`/`set` son alias del
+   * mismo mes: `Intl.DateTimeFormat('es-PE', ...)` genera "set." para
+   * setiembre en tiempo real (Node/V8 con ICU), mientras que los fixtures
+   * escritos a mano usan "sep." — antes solo se aceptaba "sep", así que
+   * CUALQUIER orden creada en setiembre real (todas las de carga masiva,
+   * hoy) caía en el fallback `0` y quedaba ordenada como la más antigua en
+   * vez de la más reciente.
+   */
+  private static readonly MONTH_INDEX: Record<string, number> = {
+    ene: 0,
+    feb: 1,
+    mar: 2,
+    abr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    ago: 7,
+    sep: 8,
+    set: 8,
+    oct: 9,
+    nov: 10,
+    dic: 11,
+  };
+  /**
+   * `Intl.DateTimeFormat('es-PE', { timeStyle: 'short' })` en tiempo real
+   * genera 12 horas con "a. m."/"p. m." (con espacios y puntos, a veces con
+   * un espacio angosto U+202F antes) — los fixtures escritos a mano usan
+   * 24 horas ("08:00"). El regex acepta ambos formatos.
+   */
   private registrationTimestamp(value: string): number {
-    const months: Record<string, number> = {
-      ene: 0,
-      feb: 1,
-      mar: 2,
-      abr: 3,
-      may: 4,
-      jun: 5,
-      jul: 6,
-      ago: 7,
-      sep: 8,
-      oct: 9,
-      nov: 10,
-      dic: 11,
-    };
-    const match = value.match(
-      /^(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.\s+(\d{4}),\s+(\d{2}):(\d{2})$/i,
+    const normalized = value.replace(/[  ]/g, ' ');
+    const match = normalized.match(
+      /^(\d{1,2})\s+([a-záéíóú]{3,4})\.\s+(\d{4}),\s+(\d{1,2}):(\d{2})(?:\s*(a\.?\s?m\.?|p\.?\s?m\.?))?$/i,
     );
     if (!match) return 0;
-    return new Date(
-      Number(match[3]),
-      months[match[2].toLowerCase()],
-      Number(match[1]),
-      Number(match[4]),
-      Number(match[5]),
-    ).getTime();
+    const monthIndex = CaptureOrdersService.MONTH_INDEX[match[2].toLowerCase()];
+    if (monthIndex === undefined) return 0;
+    let hour = Number(match[4]);
+    const meridiem = match[6]?.toLowerCase().replace(/[.\s]/g, '');
+    if (meridiem === 'pm' && hour < 12) hour += 12;
+    if (meridiem === 'am' && hour === 12) hour = 0;
+    return new Date(Number(match[3]), monthIndex, Number(match[1]), hour, Number(match[5])).getTime();
   }
   private registrationDate(value: string): string {
-    const match = value.match(
-      /^(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.\s+(\d{4}),/i,
-    );
+    const normalized = value.replace(/[  ]/g, ' ');
+    const match = normalized.match(/^(\d{1,2})\s+([a-záéíóú]{3,4})\.\s+(\d{4}),/i);
     if (!match) return '';
-    const months: Record<string, number> = {
-      ene: 1,
-      feb: 2,
-      mar: 3,
-      abr: 4,
-      may: 5,
-      jun: 6,
-      jul: 7,
-      ago: 8,
-      sep: 9,
-      oct: 10,
-      nov: 11,
-      dic: 12,
-    };
-    return `${match[3]}-${String(months[match[2].toLowerCase()]).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+    const monthIndex = CaptureOrdersService.MONTH_INDEX[match[2].toLowerCase()];
+    if (monthIndex === undefined) return '';
+    return `${match[3]}-${String(monthIndex + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
   }
 
   // ---------------------------------------------------------------------
@@ -440,9 +455,92 @@ export class CaptureOrdersService {
     const sequence = Number(unitCode.split('-')[1]);
     return DEMO_OWNERS[Math.abs(Number.isFinite(sequence) ? sequence : 0) % DEMO_OWNERS.length];
   }
+  /**
+   * Fallback demo determinística — solo para órdenes viejas del fixture
+   * semilla que no tienen motor/contrato reales todavía (antes de esta
+   * carga masiva, TODO era hash). Las órdenes nuevas (carga masiva) ya
+   * traen `engineCode`/`contractStatus` reales, ver `orderOf`.
+   */
+  private captureSeed(unitCode: string): number {
+    let seed = 0;
+    for (let i = 0; i < unitCode.length; i++) seed = (seed * 31 + unitCode.charCodeAt(i)) >>> 0;
+    return seed;
+  }
+  private orderOf(unitCode: string): CaptureOrder | undefined {
+    return this.allOrders().find((order) => order.unitCode === unitCode);
+  }
+  engineCodeOf(unitCode: string): string {
+    const engineCode = this.orderOf(unitCode)?.engineCode;
+    if (engineCode) return engineCode;
+    const seed = this.captureSeed(unitCode);
+    return `ISB${(seed % 9) + 1}.${seed % 9}-${String(seed % 999).padStart(3, '0')}`;
+  }
+  /**
+   * "Activo"/"Sin contrato"/"No vigente" en vez de un simple sí/no:
+   * "No vigente" (contrato desactivado/vencido) es la señal que le dice al
+   * operador "investigar, puede que el GPS siga activo" — distinto de una
+   * unidad que nunca tuvo contrato con nosotros ("Sin contrato"). Las
+   * órdenes de carga masiva ya traen el snapshot real (`sapContractStatusFor`,
+   * calculado una vez al momento de la carga); el hash de acá es solo
+   * fallback para el fixture semilla.
+   */
+  contractStatusOf(unitCode: string): CaptureContractStatus {
+    const contractStatus = this.orderOf(unitCode)?.contractStatus;
+    if (contractStatus) return contractStatus;
+    const remainder = this.captureSeed(unitCode) % 3;
+    return remainder === 0 ? 'Sin contrato' : remainder === 1 ? 'Activo' : 'No vigente';
+  }
+  contractStatusSeverity(status: CaptureContractStatus): TagSeverity {
+    return status === 'Activo' ? 'success' : status === 'No vigente' ? 'warn' : 'secondary';
+  }
+  documentsCompleteCountOf(order: CaptureOrder): number {
+    const attachedTypes = new Set((order.documents ?? []).map((document) => document.type));
+    return CAPTURE_DOCUMENT_DEFINITIONS.filter((definition) => attachedTypes.has(definition.type))
+      .length;
+  }
+  hasDocument(order: CaptureOrder, type: CaptureDocumentType): boolean {
+    return (order.documents ?? []).some((document) => document.type === type);
+  }
+  /**
+   * Marcar/desmarcar un documento desde la casilla de la matriz, sin la
+   * carga del archivo real todavía — eso queda para una iteración
+   * posterior. Por ahora solo registra la presencia del documento en la
+   * orden ya registrada.
+   */
+  toggleDocumentMark(order: CaptureOrder, type: CaptureDocumentType): void {
+    const updated = this.hasDocument(order, type)
+      ? this.api.removeDocument(order.id, type)
+      : this.api.attachDocument(order.id, {
+          type,
+          fileName: CAPTURE_DOCUMENT_DEFINITIONS.find((definition) => definition.type === type)!
+            .label,
+          fileSize: 0,
+        });
+    if (!updated) return;
+    if (this.selectedOrder()?.id === updated.id) this.selectedOrder.set(updated);
+  }
   locationOf(unitCode: string): UnitOption | null {
     const knownUnit = UNIT_OPTIONS.find((unit) => unit.code === unitCode);
     if (knownUnit) return knownUnit;
+
+    // Snapshot real tomado al momento de la carga masiva (cruce placa+motor
+    // contra `FleetTelemetryService`, ver `validateBulkFile`) — no una
+    // ubicación en vivo, así que no cambia si la unidad se sigue moviendo.
+    const order = this.orderOf(unitCode);
+    if (order?.lastPosition) {
+      const [lat, lng] = order.lastPosition;
+      return {
+        code: unitCode,
+        owner: this.ownerOf(unitCode),
+        icon: this.unitIconOf(unitCode),
+        lastLocation: `${lat.toFixed(4)}, ${lng.toFixed(4)}${order.lastPositionAt ? ` · ${new Date(order.lastPositionAt).toLocaleString('es-PE')}` : ''}`,
+        lastLocationMapUrl: `https://www.google.com/maps/search/?api=1&query=${lat}%2C${lng}`,
+      };
+    }
+
+    // Una unidad sin contrato nunca tuvo GPS nuestro que reportarle una
+    // posición — no hay de dónde vendría ese dato.
+    if (this.contractStatusOf(unitCode) === 'Sin contrato') return null;
 
     const sequence = Number(unitCode.split('-')[1]);
     if (!Number.isFinite(sequence) || sequence % 4 === 0) return null;
@@ -463,11 +561,10 @@ export class CaptureOrdersService {
     return (
       (
         {
-          Registrada: 'info',
-          'En revisión': 'warn',
-          'Con observación': 'danger',
-          Cerrada: 'secondary',
-          Anulada: 'danger',
+          Pendiente: 'info',
+          Observado: 'danger',
+          Capturado: 'success',
+          Paralizado: 'warn',
         } as Record<string, TagSeverity>
       )[status] ?? 'secondary'
     );
@@ -480,7 +577,7 @@ export class CaptureOrdersService {
       (entry) =>
         entry.action === 'Creación' ||
         entry.action === 'Cambio de estado' ||
-        entry.action === 'Anulación',
+        entry.action === 'Paralización',
     );
 
     return lifecycleEntries.length
@@ -488,16 +585,19 @@ export class CaptureOrdersService {
       : [{ action: 'Creación', at: order.createdAt, detail: 'Orden registrada.' }];
   }
   canEdit(order: CaptureOrder): boolean {
-    return order.status === 'Registrada' || order.status === 'Con observación';
+    return order.status === 'Pendiente' || order.status === 'Observado';
   }
   canClose(order: CaptureOrder): boolean {
-    return order.status === 'Registrada';
+    return order.status === 'Pendiente' || order.status === 'Observado';
   }
   canObserve(order: CaptureOrder): boolean {
-    return order.status === 'Registrada' || order.status === 'En revisión';
+    return order.status === 'Pendiente';
+  }
+  canRevertToPending(order: CaptureOrder): boolean {
+    return order.status === 'Observado';
   }
   canAnnul(order: CaptureOrder): boolean {
-    return order.status !== 'Cerrada' && order.status !== 'Anulada';
+    return order.status !== 'Capturado' && order.status !== 'Paralizado';
   }
 
   // ---------------------------------------------------------------------
@@ -578,6 +678,7 @@ export class CaptureOrdersService {
     caseNumber: '',
     receivedOn: '',
     documents: [],
+    financiera: 'Santander',
   });
   readonly errors = signal<Record<FormField, string>>({
     unitCode: '',
@@ -585,6 +686,7 @@ export class CaptureOrdersService {
     caseNumber: '',
     receivedOn: '',
     documents: '',
+    financiera: '',
   });
   readonly saving = signal(false);
   readonly formOpen = signal(false);
@@ -635,6 +737,7 @@ export class CaptureOrdersService {
       caseNumber: order.caseNumber,
       receivedOn: order.receivedOn,
       documents: [...(order.documents ?? [])],
+      financiera: order.financiera,
     });
     this.errors.set(this.emptyErrors());
     this.formOpen.set(true);
@@ -712,6 +815,7 @@ export class CaptureOrdersService {
           ? 'La fecha no puede ser futura.'
           : '',
       documents: hasAllDocuments ? '' : 'Adjunta los cuatro documentos de respaldo para continuar.',
+      financiera: '',
     };
     this.errors.set(errors);
     return Object.values(errors).every((error) => !error);
@@ -727,10 +831,14 @@ export class CaptureOrdersService {
       caseNumber: this.caseNumberPrefix,
       receivedOn: this.today,
       documents: [],
+      // El formulario individual está fuera de alcance (ver
+      // docs/arquitectura-new-capture-order.md#capturas-sin-registro-individual);
+      // este valor no se muestra en ninguna UI, solo satisface el tipo.
+      financiera: 'Santander',
     };
   }
   private emptyErrors(): Record<FormField, string> {
-    return { unitCode: '', source: '', caseNumber: '', receivedOn: '', documents: '' };
+    return { unitCode: '', source: '', caseNumber: '', receivedOn: '', documents: '', financiera: '' };
   }
   private localToday(): string {
     const now = new Date();
@@ -767,12 +875,12 @@ export class CaptureOrdersService {
   }
 
   // ---------------------------------------------------------------------
-  // Cerrar captura
+  // Marcar como capturado (antes "cerrar")
   // ---------------------------------------------------------------------
   readonly closingOrder = signal<CaptureOrder | null>(null);
   readonly closeOpen = signal(false);
   readonly closePrimaryAction = computed(() => ({
-    label: 'Cerrar captura',
+    label: 'Marcar como capturado',
     loading: this.saving(),
   }));
 
@@ -799,7 +907,21 @@ export class CaptureOrdersService {
     }
     this.selectedOrder.set(result.order);
     this.closeCloseConfirmation();
-    this.showMessage('success', `La orden ${result.order.id} fue cerrada.`);
+    this.showMessage('success', `La orden ${result.order.id} fue marcada como capturada.`);
+  }
+
+  /** Una captura Observada puede volver a Pendiente directamente, sin diálogo de confirmación — es reversible y no destructivo. */
+  async revertToPending(order: CaptureOrder): Promise<void> {
+    if (!this.canRevertToPending(order)) return;
+    this.saving.set(true);
+    const result = await this.api.revertToPending(order.id);
+    this.saving.set(false);
+    if (result.kind !== 'success') {
+      this.showMessage('error', result.message);
+      return;
+    }
+    if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.showMessage('success', `La orden ${result.order.id} volvió a Pendiente.`);
   }
 
   // ---------------------------------------------------------------------
@@ -851,18 +973,18 @@ export class CaptureOrdersService {
 
     this.closeObservation();
     this.selectedOrder.set(result.order);
-    this.showMessage('success', `La orden ${result.order.id} quedó con observación.`);
+    this.showMessage('success', `La orden ${result.order.id} quedó Observado.`);
   }
 
   // ---------------------------------------------------------------------
-  // Anular captura
+  // Paralizar captura (antes "anular")
   // ---------------------------------------------------------------------
   readonly annulledOrder = signal<CaptureOrder | null>(null);
   readonly annulOpen = signal(false);
   readonly annulmentReason = signal('');
   readonly annulmentReasonError = signal('');
   readonly annulPrimaryAction = computed(() => ({
-    label: 'Anular captura',
+    label: 'Paralizar captura',
     disabled: !this.annulmentReason().trim(),
     loading: this.saving(),
   }));
@@ -890,7 +1012,7 @@ export class CaptureOrdersService {
     const order = this.annulledOrder();
     if (!order) return;
     if (!this.annulmentReason().trim()) {
-      this.annulmentReasonError.set('Describe el motivo de anulación.');
+      this.annulmentReasonError.set('Describe el motivo de paralización.');
       return;
     }
     this.saving.set(true);
@@ -904,7 +1026,7 @@ export class CaptureOrdersService {
     this.selectedOrder.set(result.order);
     this.showMessage(
       'success',
-      `La orden ${result.order.id} fue anulada y se conserva en el historial.`,
+      `La orden ${result.order.id} fue paralizada y se conserva en el historial.`,
     );
   }
 
@@ -917,7 +1039,11 @@ export class CaptureOrdersService {
   readonly bulkUploadError = signal('');
   readonly bulkLoadedCount = signal(0);
   readonly bulkValidationRows = signal<readonly BulkValidationRow[]>([]);
-  readonly bulkErrorPage = signal(1);
+  readonly bulkReviewPage = signal(1);
+  /** 0–100 mientras se valida — por chunk, no de una sola vez (ver `validateBulkFile`), para que el avance sea real y no un ícono girando sin información. */
+  readonly bulkValidationProgress = signal(0);
+  /** El proveedor ya no lo elige nadie a mano: se detecta por la firma de columnas del archivo (ver `capture-order-formats.ts`). */
+  readonly bulkDetectedFinanciera = signal<CaptureFinanciera | null>(null);
 
   readonly bulkValidRows = computed(() =>
     this.bulkValidationRows().filter((row) => row.outcome === 'valid'),
@@ -925,17 +1051,64 @@ export class CaptureOrdersService {
   readonly bulkRejectedRows = computed(() =>
     this.bulkValidationRows().filter((row) => row.outcome === 'rejected'),
   );
-  readonly bulkErrorPages = computed(() =>
-    Math.max(1, Math.ceil(this.bulkRejectedRows().length / BULK_ERROR_PAGE_SIZE)),
+  /**
+   * Órdenes existentes cuyo estado contradice lo que implica el archivo que
+   * se está validando — calculadas al momento de validar, no después de
+   * confirmar (ver `mock-capture-orders.service.ts#previewBulkConflicts`).
+   */
+  readonly bulkConflictRows = signal<BulkConflictPreviewRow[]>([]);
+  /** Decisión elegida por orden (id → 'keep-system' | 'accept-upload') mientras se revisa el archivo, antes de confirmar. */
+  readonly bulkConflictChoices = signal<Record<string, ResolveConflictChoice>>({});
+  readonly bulkAllConflictsResolved = computed(() =>
+    this.bulkConflictRows().every((row) => !!this.bulkConflictChoices()[row.order.id]),
   );
-  readonly bulkErrorSummary = computed(() => {
-    const total = this.bulkRejectedRows().length;
-    const start = (this.bulkErrorPage() - 1) * BULK_ERROR_PAGE_SIZE + 1;
+  /**
+   * Una sola tabla para todo lo que no se carga automáticamente: las filas
+   * en conflicto (requieren elegir Sistema/Archivo) primero, después las
+   * rechazadas por un error real del archivo (duplicado dentro del mismo
+   * archivo). Misma tabla, no dos secciones separadas.
+   */
+  readonly bulkReviewRows = computed<BulkReviewRow[]>(() => [
+    // "Fila" es la fila real del archivo (Excel) donde aparece la unidad,
+    // no un índice de esta tabla — puede no ser consecutiva (50, 51, 64...).
+    // En un conflicto tipo "absent" no hay fila: la unidad justamente no
+    // está en el archivo, así que queda sin número.
+    ...this.bulkConflictRows().map(
+      (row): BulkReviewRow => ({
+        kind: 'conflict',
+        rowNumber: row.rowNumber,
+        unitCode: row.order.unitCode,
+        note: row.note,
+        orderId: row.order.id,
+        currentStatus: row.order.status,
+        acceptedStatus: row.order.status === 'Observado' ? 'Capturado' : 'Pendiente',
+      }),
+    ),
+    ...this.bulkRejectedRows().map(
+      (row): BulkReviewRow => ({
+        kind: 'rejected',
+        rowNumber: row.row,
+        unitCode: row.unitCode,
+        reason: row.reason ?? 'Requiere corrección.',
+      }),
+    ),
+  ]);
+  readonly bulkReviewPages = computed(() =>
+    Math.max(1, Math.ceil(this.bulkReviewRows().length / BULK_ERROR_PAGE_SIZE)),
+  );
+  readonly bulkReviewSummary = computed(() => {
+    const total = this.bulkReviewRows().length;
+    const start = (this.bulkReviewPage() - 1) * BULK_ERROR_PAGE_SIZE + 1;
     return `${start}–${Math.min(start + BULK_ERROR_PAGE_SIZE - 1, total)} de ${total} filas`;
   });
   readonly bulkPrimaryAction = computed(() => {
     const stage = this.bulkUploadStage();
-    if (stage === 'review') return { label: `Cargar ${this.bulkValidRows().length} datos` };
+    if (stage === 'review') {
+      if (!this.bulkAllConflictsResolved()) {
+        return { label: 'Resuelve las decisiones pendientes', disabled: true };
+      }
+      return { label: `Cargar ${this.bulkValidRows().length} datos` };
+    }
     if (stage === 'uploading') return { label: 'Cargando datos', loading: true, disabled: true };
     if (stage === 'success') return { label: 'Cerrar' };
     return { label: 'Selecciona un archivo', disabled: true };
@@ -946,10 +1119,10 @@ export class CaptureOrdersService {
       : { label: 'Cancelar' },
   );
 
-  /** Página actual de filas rechazadas, sin depender de un `TemplateRef` particular. */
-  bulkErrorRowsForPage(): BulkValidationRow[] {
-    const start = (this.bulkErrorPage() - 1) * BULK_ERROR_PAGE_SIZE;
-    return this.bulkRejectedRows().slice(start, start + BULK_ERROR_PAGE_SIZE);
+  /** Página actual de la tabla combinada (conflictos + rechazadas), sin depender de un `TemplateRef` particular. */
+  bulkReviewRowsForPage(): BulkReviewRow[] {
+    const start = (this.bulkReviewPage() - 1) * BULK_ERROR_PAGE_SIZE;
+    return this.bulkReviewRows().slice(start, start + BULK_ERROR_PAGE_SIZE);
   }
 
   openBulkUpload(): void {
@@ -959,8 +1132,15 @@ export class CaptureOrdersService {
     this.bulkUploadError.set('');
     this.bulkLoadedCount.set(0);
     this.bulkValidationRows.set([]);
-    this.bulkErrorPage.set(1);
+    this.bulkReviewPage.set(1);
+    this.bulkConflictRows.set([]);
+    this.bulkConflictChoices.set({});
+    this.bulkValidationProgress.set(0);
+    this.bulkDetectedFinanciera.set(null);
     this.bulkUploadOpen.set(true);
+  }
+  setBulkConflictChoice(orderId: string, choice: ResolveConflictChoice): void {
+    this.bulkConflictChoices.update((choices) => ({ ...choices, [orderId]: choice }));
   }
   closeBulkUpload(): void {
     if (this.bulkUploadStage() !== 'uploading') this.bulkUploadOpen.set(false);
@@ -971,34 +1151,22 @@ export class CaptureOrdersService {
   dropBulkFile(event: DragEvent): void {
     event.preventDefault();
     const file = event.dataTransfer?.files.item(0);
-    if (file) this.validateBulkFile(file);
+    if (file) void this.validateBulkFile(file);
   }
   selectBulkFile(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0);
     input.value = '';
-    if (file) this.validateBulkFile(file);
-  }
-  downloadBulkTemplate(): void {
-    const template = `﻿${[
-      'Código de unidad,Fuente de la orden,Número de expediente,Fecha de recepción',
-      'VHC-1024,Centro de operaciones,EXP-2026-6101,2026-09-20',
-    ].join('\n')}`;
-    const url = URL.createObjectURL(new Blob([template], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'plantilla-carga-masiva-capturas.csv';
-    link.click();
-    URL.revokeObjectURL(url);
+    if (file) void this.validateBulkFile(file);
   }
   runBulkPrimaryAction(): void {
     if (this.bulkUploadStage() === 'review') void this.uploadBulkRows();
     if (this.bulkUploadStage() === 'success') this.closeBulkUpload();
   }
-  setBulkErrorPage(page: number): void {
-    this.bulkErrorPage.set(Math.min(Math.max(1, page), this.bulkErrorPages()));
+  setBulkReviewPage(page: number): void {
+    this.bulkReviewPage.set(Math.min(Math.max(1, page), this.bulkReviewPages()));
   }
-  private validateBulkFile(file: File): void {
+  private async validateBulkFile(file: File): Promise<void> {
     const extension = file.name.split('.').pop()?.toLocaleLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(extension ?? '')) {
       this.bulkUploadError.set('Selecciona un archivo XLSX, XLS o CSV.');
@@ -1010,31 +1178,183 @@ export class CaptureOrdersService {
     }
     this.bulkUploadError.set('');
     this.bulkFileName.set(file.name);
+    this.bulkValidationProgress.set(0);
     this.bulkUploadStage.set('validating');
-    window.setTimeout(() => {
-      if (this.bulkUploadStage() !== 'validating') return;
-      this.bulkValidationRows.set(BULK_VALIDATION_ROWS);
-      this.bulkErrorPage.set(1);
-      this.bulkUploadStage.set('review');
-    }, 650);
+
+    let workbook;
+    try {
+      workbook = await readCaptureWorkbook(file);
+    } catch {
+      this.bulkUploadError.set('No pudimos leer el archivo. Verifica que no esté dañado.');
+      this.bulkUploadStage.set('select');
+      return;
+    }
+    if (this.bulkUploadStage() !== 'validating') return; // se canceló mientras leía
+
+    const signature = detectCaptureFormat(workbook.headers);
+    if (!signature) {
+      this.bulkUploadError.set(
+        'No reconocemos este formato de archivo — no coincide con Santander ni Mapfre.',
+      );
+      this.bulkUploadStage.set('select');
+      return;
+    }
+    this.bulkDetectedFinanciera.set(signature.financiera);
+
+    const parsedRows = parseCaptureRows(signature, workbook.headers, workbook.rows);
+    const rows = await this.validateParsedRowsInChunks(parsedRows, signature.financiera);
+    if (this.bulkUploadStage() !== 'validating') return; // se canceló mientras procesaba
+
+    this.bulkValidationRows.set(rows);
+    this.bulkReviewPage.set(1);
+    // La reconciliación se calcula acá, al validar — no después de
+    // confirmar — para que la decisión (Sistema/Archivo) se tome en esta
+    // misma pantalla de revisión.
+    const uploadedUnits: BulkReconciliationUnit[] = rows.map((row) => ({
+      unitCode: row.unitCode,
+      financiera: row.financiera,
+      row: row.row,
+    }));
+    this.bulkConflictRows.set(this.api.previewBulkConflicts(uploadedUnits));
+    this.bulkConflictChoices.set({});
+    this.bulkUploadStage.set('review');
+  }
+  /**
+   * Procesa las filas en chunks (no todas de una vez) para que la barra de
+   * progreso avance de verdad con archivos grandes (~1000+ filas) — por
+   * chunk: limpia placa/motor (ya vienen limpios de `parseCaptureRows`),
+   * rechaza placa vacía o repetida dentro del archivo, y para las válidas
+   * calcula el contrato (mock SAP) y la última posición (nuestra flota).
+   * Ninguna columna del archivo decide esto — ni siquiera cuando Mapfre
+   * insinúa el dueño real vía "Proveedor Gps": se valida igual para el
+   * 100% de las filas de cualquier proveedor.
+   */
+  private async validateParsedRowsInChunks(
+    parsedRows: readonly ParsedCaptureRow[],
+    financiera: CaptureFinanciera,
+  ): Promise<BulkValidationRow[]> {
+    const CHUNK_SIZE = 80;
+    const seenUnitCodes = new Set<string>();
+    const rows: BulkValidationRow[] = [];
+
+    for (let start = 0; start < parsedRows.length; start += CHUNK_SIZE) {
+      if (this.bulkUploadStage() !== 'validating') return rows; // se canceló mientras procesaba
+      const chunk = parsedRows.slice(start, start + CHUNK_SIZE);
+      for (const parsedRow of chunk) {
+        if (!parsedRow.unitCode) {
+          rows.push({
+            row: parsedRow.rowNumber,
+            unitCode: parsedRow.unitCode,
+            source: parsedRow.source,
+            financiera,
+            outcome: 'rejected',
+            reason: 'La fila no trae placa.',
+          });
+          continue;
+        }
+        if (seenUnitCodes.has(parsedRow.unitCode)) {
+          rows.push({
+            row: parsedRow.rowNumber,
+            unitCode: parsedRow.unitCode,
+            source: parsedRow.source,
+            financiera,
+            outcome: 'rejected',
+            reason: 'La unidad está repetida dentro del archivo.',
+          });
+          continue;
+        }
+        seenUnitCodes.add(parsedRow.unitCode);
+
+        const contractStatus = sapContractStatusFor(parsedRow.unitCode, parsedRow.engineCode);
+        const fleetMatch = this.fleet
+          .units()
+          .find(
+            (unit) =>
+              unit.vehicleCode.toUpperCase() === parsedRow.unitCode &&
+              deviceInfoFor(unit).engineCode.toUpperCase().replace(/[^A-Z0-9]/g, '') ===
+                parsedRow.engineCode,
+          );
+
+        rows.push({
+          row: parsedRow.rowNumber,
+          unitCode: parsedRow.unitCode,
+          source: parsedRow.source,
+          financiera,
+          outcome: 'valid',
+          engineCode: parsedRow.engineCode,
+          chassisCode: parsedRow.chassisCode,
+          clientName: parsedRow.clientName,
+          marca: parsedRow.marca,
+          modelo: parsedRow.modelo,
+          caseNumber: parsedRow.caseNumber,
+          receivedOn: parsedRow.receivedOn,
+          contractStatus,
+          lastPosition: fleetMatch?.position,
+          lastPositionAt: fleetMatch?.lastUpdate,
+        });
+      }
+      this.bulkValidationProgress.set(
+        Math.round((Math.min(start + CHUNK_SIZE, parsedRows.length) / parsedRows.length) * 100),
+      );
+      // Cede el hilo entre chunks — con ~1600 filas, sin esto la UI se congela
+      // hasta terminar en vez de mostrar el avance real.
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+    return rows;
   }
   private async uploadBulkRows(): Promise<void> {
     this.bulkUploadStage.set('uploading');
+    // La lista completa (válidas + rechazadas por duplicado) es lo que se
+    // reconcilia contra el sistema: una rechazada por duplicado sigue "en
+    // la lista" de su financiera, solo no genera una orden nueva.
+    const uploadedUnits: BulkReconciliationUnit[] = this.bulkValidationRows().map((row) => ({
+      unitCode: row.unitCode,
+      financiera: row.financiera,
+      row: row.row,
+    }));
+    const resolutions = new Map(Object.entries(this.bulkConflictChoices()));
+    // Prioridad de creación: primero las que sí tienen contrato con
+    // nosotros (pedido explícito), después el resto en el orden en que
+    // llegaron — es solo orden de creación, no un filtro: todas se
+    // registran igual.
+    const prioritized = [...this.bulkValidRows()].sort((first, second) => {
+      const firstPriority = first.contractStatus === 'Activo' ? 0 : 1;
+      const secondPriority = second.contractStatus === 'Activo' ? 0 : 1;
+      return firstPriority - secondPriority;
+    });
     const result = await this.api.createBulk(
-      this.bulkValidRows().map((row, index) => ({
+      prioritized.map((row) => ({
         unitCode: row.unitCode,
-        source: row.source,
-        caseNumber: `EXP-${this.today.slice(0, 4)}-${6101 + index}`,
-        receivedOn: this.today,
+        source: row.source || `Carga masiva ${row.financiera}`,
+        financiera: row.financiera,
+        caseNumber: row.caseNumber || '',
+        receivedOn: row.receivedOn || this.today,
         documents: [],
+        engineCode: row.engineCode,
+        chassisCode: row.chassisCode,
+        clientName: row.clientName,
+        marca: row.marca,
+        modelo: row.modelo,
+        contractStatus: row.contractStatus,
+        lastPosition: row.lastPosition,
+        lastPositionAt: row.lastPositionAt,
       })),
+      uploadedUnits,
+      this.bulkFileName(),
+      resolutions,
     );
     this.bulkLoadedCount.set(result.created.length);
     this.bulkUploadStage.set('success');
     this.page.set(1);
+    const extras = [
+      result.autoClosedCount
+        ? `${result.autoClosedCount} se cerraron automáticamente por no estar en la lista`
+        : '',
+      result.resolvedCount ? `${result.resolvedCount} se actualizaron según tu decisión` : '',
+    ].filter(Boolean);
     this.showMessage(
       'success',
-      `${result.created.length} capturas fueron registradas mediante carga masiva.`,
+      `${result.created.length} capturas fueron registradas mediante carga masiva${extras.length ? `, ${extras.join(' y ')}` : ''}.`,
     );
   }
 }

@@ -26,7 +26,7 @@ import { CaptureOrdersService } from '../capture-orders.service';
         <div class="dialog-content dialog-content--reason">
           <div class="dialog-copy">
             <p>
-              La orden {{ order.id }} pasará a Con observación. Describe qué debe corregirse antes
+              La orden {{ order.id }} pasará a Observado. Describe qué debe corregirse antes
               de continuar.
             </p>
           </div>
