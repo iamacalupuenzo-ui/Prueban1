@@ -2,7 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { IconName, SortOrder, TagSeverity } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
   CAPTURE_DOCUMENT_DEFINITIONS,
-  sapContractStatusFor,
   type BulkConflictPreviewRow,
   type BulkReconciliationUnit,
   type CaptureContractStatus,
@@ -15,9 +14,7 @@ import {
   type ResolveConflictChoice,
   MockCaptureOrdersService,
 } from '../../core/orders/mock-capture-orders.service';
-import { detectCaptureFormat, parseCaptureRows, type ParsedCaptureRow } from '../../core/orders/capture-order-formats';
-import { readCaptureWorkbook } from '../../core/orders/capture-order-workbook';
-import { FleetTelemetryService, deviceInfoFor } from '../../core/fleet/fleet-telemetry.service';
+import { CaptureOrdersTransitionsService } from './capture-orders-transitions.service';
 import { UnitOption } from '../../shared/unit-autocomplete.component';
 import { UnitTypeFilterOption } from '../../shared/unit-type-multi-select.component';
 
@@ -196,7 +193,7 @@ const DEMO_OWNERS = [
 @Injectable({ providedIn: 'root' })
 export class CaptureOrdersService {
   private readonly api = inject(MockCaptureOrdersService);
-  private readonly fleet = inject(FleetTelemetryService);
+  private readonly transitions = inject(CaptureOrdersTransitionsService);
 
   /** Passthrough de la carga de fixtures: la tabla y el estado vacío la consumen directo. */
   readonly fixturesLoading = this.api.fixturesLoading;
@@ -222,6 +219,13 @@ export class CaptureOrdersService {
   readonly searchTerm = signal('');
   readonly statusFilter = signal('');
   readonly contractFilter = signal('');
+  /**
+   * Independiente de `contractFilter`: el contrato viene del mock SAP y la
+   * posición de cruzar la unidad contra `FleetTelemetryService`, así que
+   * una unidad puede tener cualquier contrato y sí (o no) tener ubicación
+   * — no son la misma pregunta. Valores: '' (todas) | 'with' | 'without'.
+   */
+  readonly locationFilter = signal('');
   readonly unitTypeFilter = signal<UnitType[]>([]);
   readonly dateFrom = signal('');
   readonly dateTo = signal('');
@@ -247,6 +251,7 @@ export class CaptureOrdersService {
     const search = this.searchTerm().trim().toLocaleLowerCase();
     const status = this.statusFilter();
     const contract = this.contractFilter();
+    const location = this.locationFilter();
     const from = this.dateFrom();
     const to = this.dateTo();
     const hasDateRange = !!from && !!to;
@@ -259,6 +264,7 @@ export class CaptureOrdersService {
             .includes(search)) &&
         (!status || order.status === status) &&
         (!contract || this.contractStatusOf(order.unitCode) === contract) &&
+        (!location || this.matchesLocationFilter(order.unitCode, location)) &&
         (!hasDateRange || (registrationDate >= from && registrationDate <= to))
       );
     });
@@ -313,6 +319,10 @@ export class CaptureOrdersService {
   }
   setContractFilter(value: string): void {
     this.contractFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
+  setLocationFilter(value: string): void {
+    this.locationFilter.set(value === '__all__' ? '' : value);
     this.page.set(1);
   }
   setUnitTypeFilter(value: readonly string[]): void {
@@ -373,6 +383,7 @@ export class CaptureOrdersService {
         {
           unit: order.unitCode,
           financiera: order.financiera,
+          caseNumber: order.caseNumber ?? '',
           lastLocation: this.locationOf(order.unitCode)?.lastLocation ?? '',
           engine: this.engineCodeOf(order.unitCode),
           contract: this.contractStatusOf(order.unitCode),
@@ -490,6 +501,29 @@ export class CaptureOrdersService {
     const remainder = this.captureSeed(unitCode) % 3;
     return remainder === 0 ? 'Sin contrato' : remainder === 1 ? 'Activo' : 'No vigente';
   }
+  /**
+   * "Sin contrato" es la única condición que implica que la unidad nunca
+   * tuvo GPS nuestro — "Activo" y "No vigente" sí tuvieron GPS instalado,
+   * aunque hoy no reporten posición (ver `locationOf`). El ícono de última
+   * ubicación usa esto para distinguir "no reporta ahora" de "nunca tuvo".
+   */
+  hasGpsOf(unitCode: string): boolean {
+    return this.contractStatusOf(unitCode) !== 'Sin contrato';
+  }
+  /**
+   * El filtro "Ubicación" replica las tres categorías que ya distingue la
+   * columna Última ubicación (ícono verde/naranja/gris): 'with' = reporta
+   * posición ahora; 'no-signal' = tiene GPS (Activo/No vigente) pero no
+   * reporta; 'no-gps' = nunca tuvo GPS (Sin contrato). "Sin posición
+   * disponible" y "Sin GPS" no son lo mismo, así que no comparten valor de
+   * filtro aunque las dos impliquen "sin ubicación".
+   */
+  private matchesLocationFilter(unitCode: string, filter: string): boolean {
+    const hasPosition = !!this.locationOf(unitCode);
+    if (filter === 'with') return hasPosition;
+    if (hasPosition) return false;
+    return filter === 'no-gps' ? !this.hasGpsOf(unitCode) : this.hasGpsOf(unitCode);
+  }
   contractStatusSeverity(status: CaptureContractStatus): TagSeverity {
     return status === 'Activo' ? 'success' : status === 'No vigente' ? 'warn' : 'secondary';
   }
@@ -505,19 +539,66 @@ export class CaptureOrdersService {
    * Marcar/desmarcar un documento desde la casilla de la matriz, sin la
    * carga del archivo real todavía — eso queda para una iteración
    * posterior. Por ahora solo registra la presencia del documento en la
-   * orden ya registrada.
+   * orden ya registrada. Cada vez que se MARCA (no al desmarcar) se avisa
+   * con un toast — el operador necesita confirmación de que ese documento
+   * puntual quedó cargado, no solo un mensaje genérico al final.
    */
   toggleDocumentMark(order: CaptureOrder, type: CaptureDocumentType): void {
-    const updated = this.hasDocument(order, type)
-      ? this.api.removeDocument(order.id, type)
-      : this.api.attachDocument(order.id, {
-          type,
-          fileName: CAPTURE_DOCUMENT_DEFINITIONS.find((definition) => definition.type === type)!
-            .label,
-          fileSize: 0,
-        });
+    const wasMarked = this.hasDocument(order, type);
+    const updated = this.transitions.toggleDocument(order, type);
     if (!updated) return;
     if (this.selectedOrder()?.id === updated.id) this.selectedOrder.set(updated);
+    if (!wasMarked) {
+      const label = CAPTURE_DOCUMENT_DEFINITIONS.find((definition) => definition.type === type)?.label;
+      this.showMessage('success', `${label} cargado correctamente.`, 2500);
+    }
+  }
+  /**
+   * Documentos que habilitan el mapa: Resolución, Oficio y Notificación a
+   * Tránsito. La Requisitoria es el cuarto documento del expediente pero no
+   * condiciona esta regla — así lo definió Enzo explícitamente.
+   */
+  private readonly mapEligibleDocumentTypes: readonly CaptureDocumentType[] = [
+    'resolution',
+    'oficio',
+    'transit-notification',
+  ];
+  hasRequiredMapDocuments(order: CaptureOrder): boolean {
+    return this.mapEligibleDocumentTypes.every((type) => this.hasDocument(order, type));
+  }
+  /**
+   * Una unidad aparece en el mapa operativo cuando (a) su orden sigue activa
+   * en el flujo (Pendiente u Observado — Observado solo cierra una
+   * descripción, no saca a la unidad de seguimiento), (b) tiene los tres
+   * documentos de `mapEligibleDocumentTypes` marcados Y (c) reporta una
+   * posición actual (`locationOf`). El estado de contrato no participa: una
+   * unidad "No vigente" con señal sí aparece — el contrato y el GPS son
+   * fuentes independientes (ver `locationOf`) — y una unidad "Activo" o
+   * "No vigente" sin señal, o "Sin contrato" (nunca tuvo GPS), no aparece
+   * aunque tenga los tres documentos. Capturado/Paralizado salen del mapa
+   * siempre: ya no requieren seguimiento operativo — a pedido de Enzo
+   * (23 sep. 2026).
+   */
+  appearsOnMap(order: CaptureOrder): boolean {
+    if (order.status === 'Capturado' || order.status === 'Paralizado') return false;
+    return this.hasRequiredMapDocuments(order) && !!this.locationOf(order.unitCode);
+  }
+  mapStatusReason(order: CaptureOrder): string {
+    if (order.status === 'Capturado') {
+      return 'Fuera del mapa: la unidad ya fue capturada, no requiere más seguimiento.';
+    }
+    if (order.status === 'Paralizado') {
+      return 'Fuera del mapa: la captura está paralizada.';
+    }
+    if (!this.hasRequiredMapDocuments(order)) {
+      return 'Fuera del mapa: falta marcar Resolución, Oficio y Notificación a Tránsito.';
+    }
+    if (!this.locationOf(order.unitCode)) {
+      return this.hasGpsOf(order.unitCode)
+        ? 'Fuera del mapa: la unidad no reporta una posición actual.'
+        : 'Fuera del mapa: la unidad nunca tuvo GPS instalado.';
+    }
+    return 'En el mapa: documentos completos y con posición actual.';
   }
   locationOf(unitCode: string): UnitOption | null {
     const knownUnit = UNIT_OPTIONS.find((unit) => unit.code === unitCode);
@@ -557,6 +638,17 @@ export class CaptureOrdersService {
     const [year, month, day] = value.split('-');
     return year && month && day ? `${day}/${month}/${year}` : 'No disponible';
   }
+  /**
+   * `createdAt` guarda fecha y hora completas (`dateStyle:'medium', timeStyle:'short'`,
+   * ver `MockCaptureOrdersService`) — no se toca ese formato. La matriz y el
+   * detalle solo muestran la fecha por pedido explícito (todos los registros
+   * de un mismo lote se cargan el mismo día, la hora no aporta), pero el
+   * dato completo queda guardado por si el sistema de diseño lo vuelve a
+   * pedir más adelante.
+   */
+  createdDateLabel(createdAt: string): string {
+    return createdAt.split(',')[0];
+  }
   statusSeverity(status: string): TagSeverity {
     return (
       (
@@ -573,11 +665,17 @@ export class CaptureOrdersService {
     const entries = order.auditTrail ?? [
       { action: 'Creación' as const, at: order.createdAt, detail: 'Orden registrada.' },
     ];
+    // 'Edición' entra al timeline: hoy la única fuente de ese tipo de
+    // entrada es la corrección de responsable/ubicación/observación desde
+    // el lapicito del drawer (el formulario de alta/edición individual
+    // sigue oculto, ver `new-capture-order.page.ts`), así que ocultarla
+    // dejaría la corrección sin rastro visible para el operador.
     const lifecycleEntries = entries.filter(
       (entry) =>
         entry.action === 'Creación' ||
         entry.action === 'Cambio de estado' ||
-        entry.action === 'Paralización',
+        entry.action === 'Paralización' ||
+        entry.action === 'Edición',
     );
 
     return lifecycleEntries.length
@@ -587,17 +685,26 @@ export class CaptureOrdersService {
   canEdit(order: CaptureOrder): boolean {
     return order.status === 'Pendiente' || order.status === 'Observado';
   }
+  /**
+   * Cualquier estado puede pasar a cualquier otro — a pedido explícito de
+   * Enzo (22 sep. 2026): "todos los estados pueden modificarse en
+   * cualquier momento". Antes cada transición solo se habilitaba desde un
+   * subconjunto fijo de estados de origen (ej. observar solo desde
+   * Pendiente); ahora la única restricción es no repetir el estado en el
+   * que ya está la orden. Mismo criterio replicado en
+   * `MockCaptureOrdersService` (las cuatro transiciones), no solo acá.
+   */
   canClose(order: CaptureOrder): boolean {
-    return order.status === 'Pendiente' || order.status === 'Observado';
+    return order.status !== 'Capturado';
   }
   canObserve(order: CaptureOrder): boolean {
-    return order.status === 'Pendiente';
+    return order.status !== 'Observado';
   }
   canRevertToPending(order: CaptureOrder): boolean {
-    return order.status === 'Observado';
+    return order.status !== 'Pendiente';
   }
   canAnnul(order: CaptureOrder): boolean {
-    return order.status !== 'Capturado' && order.status !== 'Paralizado';
+    return order.status !== 'Paralizado';
   }
 
   // ---------------------------------------------------------------------
@@ -629,11 +736,13 @@ export class CaptureOrdersService {
   // ---------------------------------------------------------------------
   readonly copiedBulkUnitCode = signal<string | null>(null);
   readonly copiedLocation = signal<string | null>(null);
+  readonly copiedCaseNumber = signal<string | null>(null);
   private copyFeedbackTimeout?: number;
 
   async copyBulkUnitCode(unitCode: string): Promise<void> {
     if (!(await this.copyText(unitCode))) return;
     this.copiedLocation.set(null);
+    this.copiedCaseNumber.set(null);
     this.copiedBulkUnitCode.set(unitCode);
     this.resetCopyFeedback();
     this.showMessage('success', 'Código de unidad copiado', 2000);
@@ -641,9 +750,18 @@ export class CaptureOrdersService {
   async copyLastLocation(location: string): Promise<void> {
     if (!(await this.copyText(location))) return;
     this.copiedBulkUnitCode.set(null);
+    this.copiedCaseNumber.set(null);
     this.copiedLocation.set(location);
     this.resetCopyFeedback();
     this.showMessage('success', 'Ubicación copiada', 2000);
+  }
+  async copyCaseNumber(caseNumber: string): Promise<void> {
+    if (!(await this.copyText(caseNumber))) return;
+    this.copiedBulkUnitCode.set(null);
+    this.copiedLocation.set(null);
+    this.copiedCaseNumber.set(caseNumber);
+    this.resetCopyFeedback();
+    this.showMessage('success', 'Expediente copiado', 2000);
   }
   private async copyText(value: string): Promise<boolean> {
     try {
@@ -666,6 +784,7 @@ export class CaptureOrdersService {
     this.copyFeedbackTimeout = window.setTimeout(() => {
       this.copiedBulkUnitCode.set(null);
       this.copiedLocation.set(null);
+      this.copiedCaseNumber.set(null);
     }, 1800);
   }
 
@@ -775,9 +894,7 @@ export class CaptureOrdersService {
   private async register(): Promise<void> {
     this.saving.set(true);
     const editing = this.editingOrder();
-    const result = editing
-      ? await this.api.update(editing.id, this.draft())
-      : await this.api.create(this.draft());
+    const result = await this.transitions.register(this.draft(), editing?.id ?? null);
     this.saving.set(false);
     if (result.kind !== 'success') {
       this.confirmationOpen.set(false);
@@ -800,23 +917,7 @@ export class CaptureOrdersService {
     this.draft.set(this.emptyDraft());
   }
   private validate(): boolean {
-    const draft = this.draft();
-    const caseNumberDigits = draft.caseNumber.slice(this.caseNumberPrefix.length);
-    const hasAllDocuments = REQUIRED_DOCUMENT_TYPES.every((type) =>
-      draft.documents.some((document) => document.type === type),
-    );
-    const errors: Record<FormField, string> = {
-      unitCode: draft.unitCode.trim() ? '' : 'Ingresa el código de la unidad.',
-      source: draft.source ? '' : 'Selecciona la fuente de la orden.',
-      caseNumber: caseNumberDigits ? '' : 'Ingresa los dígitos del expediente.',
-      receivedOn: !draft.receivedOn
-        ? 'Selecciona la fecha de recepción.'
-        : draft.receivedOn > this.today
-          ? 'La fecha no puede ser futura.'
-          : '',
-      documents: hasAllDocuments ? '' : 'Adjunta los cuatro documentos de respaldo para continuar.',
-      financiera: '',
-    };
+    const errors = this.transitions.validateDraft(this.draft(), this.today, this.caseNumberPrefix);
     this.errors.set(errors);
     return Object.values(errors).every((error) => !error);
   }
@@ -873,32 +974,63 @@ export class CaptureOrdersService {
     this.closeDetails();
     window.setTimeout(() => this.openObservation(order), 220);
   }
+  revertFromDetails(order: CaptureOrder): void {
+    this.closeDetails();
+    window.setTimeout(() => this.openRevertConfirmation(order), 220);
+  }
 
   // ---------------------------------------------------------------------
   // Marcar como capturado (antes "cerrar")
   // ---------------------------------------------------------------------
   readonly closingOrder = signal<CaptureOrder | null>(null);
   readonly closeOpen = signal(false);
+  readonly closeOfficer = signal('');
+  readonly closeLocation = signal('');
+  readonly closeOfficerError = signal('');
+  readonly closeLocationError = signal('');
   readonly closePrimaryAction = computed(() => ({
     label: 'Marcar como capturado',
+    disabled: !this.closeOfficer().trim() || !this.closeLocation().trim(),
     loading: this.saving(),
   }));
 
   openCloseConfirmation(order: CaptureOrder): void {
     if (!this.canClose(order)) return;
     this.closingOrder.set(order);
+    this.closeOfficer.set('');
+    this.closeLocation.set('');
+    this.closeOfficerError.set('');
+    this.closeLocationError.set('');
     this.closeOpen.set(true);
   }
   closeCloseConfirmation(): void {
     if (this.saving()) return;
     this.closeOpen.set(false);
     this.closingOrder.set(null);
+    this.closeOfficer.set('');
+    this.closeLocation.set('');
+    this.closeOfficerError.set('');
+    this.closeLocationError.set('');
+  }
+  setCloseOfficer(value: string): void {
+    this.closeOfficer.set(value);
+    this.closeOfficerError.set('');
+  }
+  setCloseLocation(value: string): void {
+    this.closeLocation.set(value);
+    this.closeLocationError.set('');
   }
   async confirmClose(): Promise<void> {
     const order = this.closingOrder();
     if (!order) return;
+    const officer = this.closeOfficer().trim();
+    const location = this.closeLocation().trim();
+    if (!officer) this.closeOfficerError.set('Ingresa el responsable de la captura.');
+    if (!location) this.closeLocationError.set('Ingresa la ubicación de la captura.');
+    if (!officer || !location) return;
+
     this.saving.set(true);
-    const result = await this.api.close(order.id);
+    const result = await this.transitions.close(order.id, officer, location);
     this.saving.set(false);
     if (result.kind !== 'success') {
       this.closeCloseConfirmation();
@@ -910,17 +1042,109 @@ export class CaptureOrdersService {
     this.showMessage('success', `La orden ${result.order.id} fue marcada como capturada.`);
   }
 
-  /** Una captura Observada puede volver a Pendiente directamente, sin diálogo de confirmación — es reversible y no destructivo. */
-  async revertToPending(order: CaptureOrder): Promise<void> {
-    if (!this.canRevertToPending(order)) return;
+  // ---------------------------------------------------------------------
+  // Editar responsable/ubicación de una captura ya marcada — corrige un
+  // error de tipeo desde el lápiz del drawer de detalle, sin repetir la
+  // transición de estado (la orden ya está en Capturado). A pedido de Enzo
+  // (23 sep. 2026): "¿cómo puedo modificar el nombre del responsable si es
+  // que me confundí?".
+  // ---------------------------------------------------------------------
+  readonly editingCaptureDetailsOrder = signal<CaptureOrder | null>(null);
+  readonly editCaptureDetailsOpen = signal(false);
+  readonly editCaptureOfficer = signal('');
+  readonly editCaptureLocation = signal('');
+  readonly editCaptureOfficerError = signal('');
+  readonly editCaptureLocationError = signal('');
+  readonly editCaptureDetailsPrimaryAction = computed(() => ({
+    label: 'Guardar cambios',
+    disabled: !this.editCaptureOfficer().trim() || !this.editCaptureLocation().trim(),
+    loading: this.saving(),
+  }));
+  readonly editCaptureDetailsSecondaryAction = { label: 'Cancelar' };
+
+  openEditCaptureDetails(order: CaptureOrder): void {
+    this.editingCaptureDetailsOrder.set(order);
+    this.editCaptureOfficer.set(order.captureOfficer ?? '');
+    this.editCaptureLocation.set(order.captureLocation ?? '');
+    this.editCaptureOfficerError.set('');
+    this.editCaptureLocationError.set('');
+    this.editCaptureDetailsOpen.set(true);
+  }
+  closeEditCaptureDetails(): void {
+    if (this.saving()) return;
+    this.editCaptureDetailsOpen.set(false);
+    this.editingCaptureDetailsOrder.set(null);
+    this.editCaptureOfficer.set('');
+    this.editCaptureLocation.set('');
+    this.editCaptureOfficerError.set('');
+    this.editCaptureLocationError.set('');
+  }
+  setEditCaptureOfficer(value: string): void {
+    this.editCaptureOfficer.set(value);
+    this.editCaptureOfficerError.set('');
+  }
+  setEditCaptureLocation(value: string): void {
+    this.editCaptureLocation.set(value);
+    this.editCaptureLocationError.set('');
+  }
+  async confirmEditCaptureDetails(): Promise<void> {
+    const order = this.editingCaptureDetailsOrder();
+    if (!order) return;
+    const officer = this.editCaptureOfficer().trim();
+    const location = this.editCaptureLocation().trim();
+    if (!officer) this.editCaptureOfficerError.set('Ingresa el responsable de la captura.');
+    if (!location) this.editCaptureLocationError.set('Ingresa la ubicación de la captura.');
+    if (!officer || !location) return;
+
     this.saving.set(true);
-    const result = await this.api.revertToPending(order.id);
+    const result = await this.transitions.updateCaptureDetails(order.id, officer, location);
     this.saving.set(false);
     if (result.kind !== 'success') {
+      this.closeEditCaptureDetails();
       this.showMessage('error', result.message);
       return;
     }
     if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.closeEditCaptureDetails();
+    this.showMessage('success', 'Datos de la captura actualizados.', 2500);
+  }
+
+  // ---------------------------------------------------------------------
+  // Volver a pendiente — con confirmación explícita: alcanzable desde
+  // cualquier estado ahora, no solo desde Observado, así que cada cambio
+  // debe notificarse igual que las demás transiciones.
+  // ---------------------------------------------------------------------
+  readonly revertingOrder = signal<CaptureOrder | null>(null);
+  readonly revertOpen = signal(false);
+  readonly revertPrimaryAction = computed(() => ({
+    label: 'Volver a pendiente',
+    loading: this.saving(),
+  }));
+  readonly revertSecondaryAction = { label: 'Cancelar' };
+
+  openRevertConfirmation(order: CaptureOrder): void {
+    if (!this.canRevertToPending(order)) return;
+    this.revertingOrder.set(order);
+    this.revertOpen.set(true);
+  }
+  closeRevertConfirmation(): void {
+    if (this.saving()) return;
+    this.revertOpen.set(false);
+    this.revertingOrder.set(null);
+  }
+  async confirmRevertToPending(): Promise<void> {
+    const order = this.revertingOrder();
+    if (!order) return;
+    this.saving.set(true);
+    const result = await this.transitions.revertToPending(order.id);
+    this.saving.set(false);
+    if (result.kind !== 'success') {
+      this.closeRevertConfirmation();
+      this.showMessage('error', result.message);
+      return;
+    }
+    if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.closeRevertConfirmation();
     this.showMessage('success', `La orden ${result.order.id} volvió a Pendiente.`);
   }
 
@@ -964,7 +1188,7 @@ export class CaptureOrdersService {
     }
 
     this.saving.set(true);
-    const result = await this.api.observe(order.id, this.observationReason());
+    const result = await this.transitions.observe(order.id, this.observationReason());
     this.saving.set(false);
     if (result.kind !== 'success') {
       this.observationReasonError.set(result.message);
@@ -974,6 +1198,62 @@ export class CaptureOrdersService {
     this.closeObservation();
     this.selectedOrder.set(result.order);
     this.showMessage('success', `La orden ${result.order.id} quedó Observado.`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Editar la observación registrada — corrige el texto desde el lápiz del
+  // drawer de detalle, sin repetir la transición de estado.
+  // ---------------------------------------------------------------------
+  readonly editingObservationOrder = signal<CaptureOrder | null>(null);
+  readonly editObservationOpen = signal(false);
+  readonly editObservationReason = signal('');
+  readonly editObservationReasonError = signal('');
+  readonly editObservationPrimaryAction = computed(() => ({
+    label: 'Guardar cambios',
+    disabled: !this.editObservationReason().trim(),
+    loading: this.saving(),
+  }));
+  readonly editObservationSecondaryAction = { label: 'Cancelar' };
+
+  openEditObservation(order: CaptureOrder): void {
+    this.editingObservationOrder.set(order);
+    this.editObservationReason.set(order.observationReason ?? '');
+    this.editObservationReasonError.set('');
+    this.editObservationOpen.set(true);
+  }
+  closeEditObservation(): void {
+    if (this.saving()) return;
+    this.editObservationOpen.set(false);
+    this.editingObservationOrder.set(null);
+    this.editObservationReason.set('');
+    this.editObservationReasonError.set('');
+  }
+  setEditObservationReason(value: string): void {
+    this.editObservationReason.set(value);
+    this.editObservationReasonError.set('');
+  }
+  async confirmEditObservation(): Promise<void> {
+    const order = this.editingObservationOrder();
+    if (!order) return;
+    if (!this.editObservationReason().trim()) {
+      this.editObservationReasonError.set('Describe la observación.');
+      return;
+    }
+
+    this.saving.set(true);
+    const result = await this.transitions.updateObservationReason(
+      order.id,
+      this.editObservationReason(),
+    );
+    this.saving.set(false);
+    if (result.kind !== 'success') {
+      this.closeEditObservation();
+      this.showMessage('error', result.message);
+      return;
+    }
+    if (this.selectedOrder()?.id === result.order.id) this.selectedOrder.set(result.order);
+    this.closeEditObservation();
+    this.showMessage('success', 'Observación actualizada.', 2500);
   }
 
   // ---------------------------------------------------------------------
@@ -1016,7 +1296,7 @@ export class CaptureOrdersService {
       return;
     }
     this.saving.set(true);
-    const result = await this.api.annul(order.id, this.annulmentReason());
+    const result = await this.transitions.annul(order.id, this.annulmentReason());
     this.saving.set(false);
     if (result.kind !== 'success') {
       this.annulmentReasonError.set(result.message);
@@ -1181,28 +1461,21 @@ export class CaptureOrdersService {
     this.bulkValidationProgress.set(0);
     this.bulkUploadStage.set('validating');
 
-    let workbook;
-    try {
-      workbook = await readCaptureWorkbook(file);
-    } catch {
-      this.bulkUploadError.set('No pudimos leer el archivo. Verifica que no esté dañado.');
-      this.bulkUploadStage.set('select');
-      return;
-    }
+    const detected = await this.transitions.readAndDetect(file);
     if (this.bulkUploadStage() !== 'validating') return; // se canceló mientras leía
-
-    const signature = detectCaptureFormat(workbook.headers);
-    if (!signature) {
-      this.bulkUploadError.set(
-        'No reconocemos este formato de archivo — no coincide con Santander ni Mapfre.',
-      );
+    if (detected.kind === 'error') {
+      this.bulkUploadError.set(detected.message);
       this.bulkUploadStage.set('select');
       return;
     }
-    this.bulkDetectedFinanciera.set(signature.financiera);
+    this.bulkDetectedFinanciera.set(detected.financiera);
 
-    const parsedRows = parseCaptureRows(signature, workbook.headers, workbook.rows);
-    const rows = await this.validateParsedRowsInChunks(parsedRows, signature.financiera);
+    const rows = await this.transitions.validateRowsInChunks(
+      detected.parsedRows,
+      detected.financiera,
+      () => this.bulkUploadStage() !== 'validating',
+      (percent) => this.bulkValidationProgress.set(percent),
+    );
     if (this.bulkUploadStage() !== 'validating') return; // se canceló mientras procesaba
 
     this.bulkValidationRows.set(rows);
@@ -1215,133 +1488,18 @@ export class CaptureOrdersService {
       financiera: row.financiera,
       row: row.row,
     }));
-    this.bulkConflictRows.set(this.api.previewBulkConflicts(uploadedUnits));
+    this.bulkConflictRows.set(this.transitions.previewConflicts(uploadedUnits));
     this.bulkConflictChoices.set({});
     this.bulkUploadStage.set('review');
   }
-  /**
-   * Procesa las filas en chunks (no todas de una vez) para que la barra de
-   * progreso avance de verdad con archivos grandes (~1000+ filas) — por
-   * chunk: limpia placa/motor (ya vienen limpios de `parseCaptureRows`),
-   * rechaza placa vacía o repetida dentro del archivo, y para las válidas
-   * calcula el contrato (mock SAP) y la última posición (nuestra flota).
-   * Ninguna columna del archivo decide esto — ni siquiera cuando Mapfre
-   * insinúa el dueño real vía "Proveedor Gps": se valida igual para el
-   * 100% de las filas de cualquier proveedor.
-   */
-  private async validateParsedRowsInChunks(
-    parsedRows: readonly ParsedCaptureRow[],
-    financiera: CaptureFinanciera,
-  ): Promise<BulkValidationRow[]> {
-    const CHUNK_SIZE = 80;
-    const seenUnitCodes = new Set<string>();
-    const rows: BulkValidationRow[] = [];
-
-    for (let start = 0; start < parsedRows.length; start += CHUNK_SIZE) {
-      if (this.bulkUploadStage() !== 'validating') return rows; // se canceló mientras procesaba
-      const chunk = parsedRows.slice(start, start + CHUNK_SIZE);
-      for (const parsedRow of chunk) {
-        if (!parsedRow.unitCode) {
-          rows.push({
-            row: parsedRow.rowNumber,
-            unitCode: parsedRow.unitCode,
-            source: parsedRow.source,
-            financiera,
-            outcome: 'rejected',
-            reason: 'La fila no trae placa.',
-          });
-          continue;
-        }
-        if (seenUnitCodes.has(parsedRow.unitCode)) {
-          rows.push({
-            row: parsedRow.rowNumber,
-            unitCode: parsedRow.unitCode,
-            source: parsedRow.source,
-            financiera,
-            outcome: 'rejected',
-            reason: 'La unidad está repetida dentro del archivo.',
-          });
-          continue;
-        }
-        seenUnitCodes.add(parsedRow.unitCode);
-
-        const contractStatus = sapContractStatusFor(parsedRow.unitCode, parsedRow.engineCode);
-        const fleetMatch = this.fleet
-          .units()
-          .find(
-            (unit) =>
-              unit.vehicleCode.toUpperCase() === parsedRow.unitCode &&
-              deviceInfoFor(unit).engineCode.toUpperCase().replace(/[^A-Z0-9]/g, '') ===
-                parsedRow.engineCode,
-          );
-
-        rows.push({
-          row: parsedRow.rowNumber,
-          unitCode: parsedRow.unitCode,
-          source: parsedRow.source,
-          financiera,
-          outcome: 'valid',
-          engineCode: parsedRow.engineCode,
-          chassisCode: parsedRow.chassisCode,
-          clientName: parsedRow.clientName,
-          marca: parsedRow.marca,
-          modelo: parsedRow.modelo,
-          caseNumber: parsedRow.caseNumber,
-          receivedOn: parsedRow.receivedOn,
-          contractStatus,
-          lastPosition: fleetMatch?.position,
-          lastPositionAt: fleetMatch?.lastUpdate,
-        });
-      }
-      this.bulkValidationProgress.set(
-        Math.round((Math.min(start + CHUNK_SIZE, parsedRows.length) / parsedRows.length) * 100),
-      );
-      // Cede el hilo entre chunks — con ~1600 filas, sin esto la UI se congela
-      // hasta terminar en vez de mostrar el avance real.
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    }
-    return rows;
-  }
   private async uploadBulkRows(): Promise<void> {
     this.bulkUploadStage.set('uploading');
-    // La lista completa (válidas + rechazadas por duplicado) es lo que se
-    // reconcilia contra el sistema: una rechazada por duplicado sigue "en
-    // la lista" de su financiera, solo no genera una orden nueva.
-    const uploadedUnits: BulkReconciliationUnit[] = this.bulkValidationRows().map((row) => ({
-      unitCode: row.unitCode,
-      financiera: row.financiera,
-      row: row.row,
-    }));
-    const resolutions = new Map(Object.entries(this.bulkConflictChoices()));
-    // Prioridad de creación: primero las que sí tienen contrato con
-    // nosotros (pedido explícito), después el resto en el orden en que
-    // llegaron — es solo orden de creación, no un filtro: todas se
-    // registran igual.
-    const prioritized = [...this.bulkValidRows()].sort((first, second) => {
-      const firstPriority = first.contractStatus === 'Activo' ? 0 : 1;
-      const secondPriority = second.contractStatus === 'Activo' ? 0 : 1;
-      return firstPriority - secondPriority;
-    });
-    const result = await this.api.createBulk(
-      prioritized.map((row) => ({
-        unitCode: row.unitCode,
-        source: row.source || `Carga masiva ${row.financiera}`,
-        financiera: row.financiera,
-        caseNumber: row.caseNumber || '',
-        receivedOn: row.receivedOn || this.today,
-        documents: [],
-        engineCode: row.engineCode,
-        chassisCode: row.chassisCode,
-        clientName: row.clientName,
-        marca: row.marca,
-        modelo: row.modelo,
-        contractStatus: row.contractStatus,
-        lastPosition: row.lastPosition,
-        lastPositionAt: row.lastPositionAt,
-      })),
-      uploadedUnits,
+    const result = await this.transitions.uploadBulk(
+      this.bulkValidRows(),
+      this.bulkValidationRows(),
+      this.bulkConflictChoices(),
       this.bulkFileName(),
-      resolutions,
+      this.today,
     );
     this.bulkLoadedCount.set(result.created.length);
     this.bulkUploadStage.set('success');
@@ -1358,17 +1516,3 @@ export class CaptureOrdersService {
     );
   }
 }
-
-/**
- * Tipos de documento requeridos para validar el formulario. Coincide con
- * `CAPTURE_DOCUMENT_TYPES` del core service; se declara aquí como lista
- * corta porque `validate()` solo necesita los valores, no las etiquetas
- * (esas viven en `capture-order-form-dialog.component.ts`, junto a
- * `documentDefinitions`, que es lo único que las usa).
- */
-const REQUIRED_DOCUMENT_TYPES: readonly CaptureDocumentType[] = [
-  'resolution',
-  'oficio',
-  'transit-notification',
-  'requisition',
-];

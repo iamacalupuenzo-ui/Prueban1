@@ -126,6 +126,10 @@ export interface CaptureOrder extends CaptureOrderDraft {
   observedAt?: string;
   annulmentReason?: string;
   annulledAt?: string;
+  /** Quién y dónde se realizó la captura física — se piden al marcar la orden como Capturado. */
+  captureOfficer?: string;
+  captureLocation?: string;
+  capturedAt?: string;
 }
 
 export type CreateCaptureOrderResult =
@@ -210,6 +214,12 @@ export type ObserveCaptureOrderResult =
 
 export type RevertToPendingResult =
   { kind: 'success'; order: CaptureOrder } | { kind: 'forbidden' | 'not-found'; message: string };
+
+export type UpdateCaptureDetailsResult =
+  { kind: 'success'; order: CaptureOrder } | { kind: 'not-found'; message: string };
+
+export type UpdateObservationReasonResult =
+  { kind: 'success'; order: CaptureOrder } | { kind: 'not-found'; message: string };
 
 /**
  * Historial sembrado para que la vista no arranque vacía — así se puede
@@ -541,8 +551,8 @@ export class MockCaptureOrdersService {
     const current = this.find(id);
     if (!current)
       return { kind: 'not-found', message: 'No encontramos la captura que intentas paralizar.' };
-    if (current.status === 'Capturado' || current.status === 'Paralizado') {
-      return { kind: 'forbidden', message: 'Esta captura ya no admite paralización.' };
+    if (current.status === 'Paralizado') {
+      return { kind: 'forbidden', message: 'Esta captura ya está paralizada.' };
     }
 
     const timestamp = this.timestamp();
@@ -560,28 +570,28 @@ export class MockCaptureOrdersService {
     return { kind: 'success', order: updated };
   }
 
-  async close(id: string): Promise<CloseCaptureOrderResult> {
+  async close(id: string, captureOfficer: string, captureLocation: string): Promise<CloseCaptureOrderResult> {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     const current = this.find(id);
     if (!current)
       return { kind: 'not-found', message: 'No encontramos la captura que intentas marcar como capturado.' };
-    if (current.status !== 'Pendiente' && current.status !== 'Observado') {
-      return {
-        kind: 'forbidden',
-        message: 'Solo una captura pendiente u observada puede marcarse como capturada.',
-      };
+    if (current.status === 'Capturado') {
+      return { kind: 'forbidden', message: 'Esta captura ya está marcada como capturada.' };
     }
 
     const timestamp = this.timestamp();
     const updated: CaptureOrder = {
       ...current,
       status: 'Capturado',
+      captureOfficer: captureOfficer.trim(),
+      captureLocation: captureLocation.trim(),
+      capturedAt: timestamp,
       auditTrail: [
         ...this.auditOf(current),
         {
           action: 'Cambio de estado',
           at: timestamp,
-          detail: `Estado actualizado de ${current.status} a Capturado.`,
+          detail: `Estado actualizado de ${current.status} a Capturado. Responsable: ${captureOfficer.trim()} · Ubicación: ${captureLocation.trim()}.`,
         },
       ],
     };
@@ -589,14 +599,48 @@ export class MockCaptureOrdersService {
     return { kind: 'success', order: updated };
   }
 
-  /** Una captura Observada puede volver a Pendiente si la observación ya no aplica. */
+  /**
+   * Corrige responsable/ubicación de una captura ya marcada como Capturado
+   * — a pedido de Enzo (23 sep. 2026), sin repetir la transición de estado
+   * ni sus validaciones de `close()`. Queda registrado en el historial como
+   * un evento propio, distinto del "Cambio de estado" original.
+   */
+  async updateCaptureDetails(
+    id: string,
+    captureOfficer: string,
+    captureLocation: string,
+  ): Promise<UpdateCaptureDetailsResult> {
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    const current = this.find(id);
+    if (!current)
+      return { kind: 'not-found', message: 'No encontramos la captura que intentas actualizar.' };
+
+    const timestamp = this.timestamp();
+    const updated: CaptureOrder = {
+      ...current,
+      captureOfficer: captureOfficer.trim(),
+      captureLocation: captureLocation.trim(),
+      auditTrail: [
+        ...this.auditOf(current),
+        {
+          action: 'Edición',
+          at: timestamp,
+          detail: `Datos de captura actualizados. Responsable: ${captureOfficer.trim()} · Ubicación: ${captureLocation.trim()}.`,
+        },
+      ],
+    };
+    this.replace(updated);
+    return { kind: 'success', order: updated };
+  }
+
+  /** Cualquier estado puede volver a Pendiente — no solo Observado. */
   async revertToPending(id: string): Promise<RevertToPendingResult> {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     const current = this.find(id);
     if (!current)
       return { kind: 'not-found', message: 'No encontramos la captura que intentas actualizar.' };
-    if (current.status !== 'Observado') {
-      return { kind: 'forbidden', message: 'Solo una captura observada puede volver a pendiente.' };
+    if (current.status === 'Pendiente') {
+      return { kind: 'forbidden', message: 'Esta captura ya está pendiente.' };
     }
 
     const timestamp = this.timestamp();
@@ -608,7 +652,7 @@ export class MockCaptureOrdersService {
         {
           action: 'Cambio de estado',
           at: timestamp,
-          detail: 'Estado actualizado de Observado a Pendiente.',
+          detail: `Estado actualizado de ${current.status} a Pendiente.`,
         },
       ],
     };
@@ -621,11 +665,8 @@ export class MockCaptureOrdersService {
     const current = this.find(id);
     if (!current)
       return { kind: 'not-found', message: 'No encontramos la captura que intentas observar.' };
-    if (current.status !== 'Pendiente') {
-      return {
-        kind: 'forbidden',
-        message: 'Esta captura no admite observaciones en su estado actual.',
-      };
+    if (current.status === 'Observado') {
+      return { kind: 'forbidden', message: 'Esta captura ya está observada.' };
     }
 
     const timestamp = this.timestamp();
@@ -641,6 +682,30 @@ export class MockCaptureOrdersService {
           at: timestamp,
           detail: `Estado actualizado de ${current.status} a Observado. Observación: ${reason.trim()}`,
         },
+      ],
+    };
+    this.replace(updated);
+    return { kind: 'success', order: updated };
+  }
+
+  /**
+   * Corrige el texto de una observación ya registrada — a pedido de Enzo
+   * (23 sep. 2026), sin repetir la transición de estado ni sus validaciones
+   * de `observe()`.
+   */
+  async updateObservationReason(id: string, reason: string): Promise<UpdateObservationReasonResult> {
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    const current = this.find(id);
+    if (!current)
+      return { kind: 'not-found', message: 'No encontramos la captura que intentas actualizar.' };
+
+    const timestamp = this.timestamp();
+    const updated: CaptureOrder = {
+      ...current,
+      observationReason: reason.trim(),
+      auditTrail: [
+        ...this.auditOf(current),
+        { action: 'Edición', at: timestamp, detail: `Observación actualizada: ${reason.trim()}` },
       ],
     };
     this.replace(updated);

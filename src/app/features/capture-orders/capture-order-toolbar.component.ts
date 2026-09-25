@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { Icon, InputDropdown, InputDropdownOption, InputGroup, InputGroupAddon, InputGroupInput } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Icon, InputDropdown, InputDropdownOption, InputGroup, InputGroupAddon, InputGroupInput, Popover } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
   CAPTURE_CONTRACT_STATUSES,
   CAPTURE_ORDER_STATUSES,
@@ -13,10 +13,15 @@ import { CaptureOrdersService } from './capture-orders.service';
  * (bloque `.matrix-toolbar`). El popover de rango de fechas es UI local del
  * toolbar (nadie más lo necesita); en cambio `dateFrom`/`dateTo` viven en
  * `CaptureOrdersService` porque alimentan el filtrado de la tabla.
+ *
+ * PRUEBA VISUAL (22 sep. 2026, a pedido de Enzo, no confirmado como
+ * definitivo): Contrato/Ubicación/Fecha se movieron detrás de un botón
+ * "Más filtros" con popover, dejando solo Buscar + Estado visibles. Si no
+ * se confirma, revertir a los cinco campos en línea (ver historial de git).
  */
 @Component({
   selector: 'app-capture-order-toolbar',
-  imports: [DateRangeFilterComponent, Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput],
+  imports: [DateRangeFilterComponent, Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput, Popover],
   template: `
     <div class="matrix-toolbar" aria-label="Filtros de la matriz de capturas">
       <div class="toolbar-field">
@@ -49,24 +54,67 @@ import { CaptureOrdersService } from './capture-orders.service';
           (valueChange)="state.setStatusFilter($event)"
         />
       </div>
-      <div class="toolbar-field toolbar-field--status">
-        <label id="capture-contract-label">Contrato</label
-        ><cs-input-dropdown
-          class="status-filter-control"
-          aria-labelledby="capture-contract-label"
-          placeholder="Todos los contratos"
-          size="md"
-          [options]="contractOptions"
-          [value]="state.contractFilter()"
-          (valueChange)="state.setContractFilter($event)"
-        />
-      </div>
-      <div class="toolbar-field toolbar-field--date-range">
-        <app-date-range-filter
-          label="Fecha de registro"
-          [value]="{ from: state.dateFrom(), to: state.dateTo() }"
-          (valueChange)="onDateRangeChange($event)"
-        />
+      <div class="toolbar-field">
+        <span class="toolbar-field__spacer" aria-hidden="true"></span>
+        <button
+          #moreFiltersTrigger
+          type="button"
+          class="more-filters-trigger"
+          [class.more-filters-trigger--open]="moreFiltersOpen()"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="moreFiltersOpen()"
+          (click)="toggleMoreFilters()"
+        >
+          <cs-icon name="sliders" [size]="16" aria-hidden="true" />
+          <span>Más filtros{{ activeExtraFilterCount() ? ' (' + activeExtraFilterCount() + ')' : '' }}</span>
+        </button>
+        <cs-popover
+          [isOpen]="moreFiltersOpen()"
+          [triggerRef]="moreFiltersTrigger"
+          placement="bottom-end"
+          [offset]="4"
+          role="dialog"
+          ariaLabel="Más filtros"
+          [bare]="true"
+          [closeOnOverlayClick]="false"
+          (closed)="closeMoreFilters()"
+        >
+          <div class="more-filters-popover">
+            <div class="toolbar-field">
+              <label id="capture-contract-label">Contrato</label
+              ><cs-input-dropdown
+                class="status-filter-control"
+                aria-labelledby="capture-contract-label"
+                placeholder="Todos los contratos"
+                size="md"
+                [fullWidth]="true"
+                [options]="contractOptions"
+                [value]="state.contractFilter()"
+                (valueChange)="state.setContractFilter($event)"
+              />
+            </div>
+            <div class="toolbar-field">
+              <label id="capture-location-label">Ubicación</label
+              ><cs-input-dropdown
+                class="status-filter-control"
+                aria-labelledby="capture-location-label"
+                placeholder="Todas"
+                size="md"
+                [fullWidth]="true"
+                [options]="locationOptions"
+                [value]="state.locationFilter()"
+                (valueChange)="state.setLocationFilter($event)"
+              />
+            </div>
+            <div class="toolbar-field">
+              <app-date-range-filter
+                label="Fecha de registro"
+                [value]="{ from: state.dateFrom(), to: state.dateTo() }"
+                (valueChange)="onDateRangeChange($event)"
+              />
+            </div>
+          </div>
+        </cs-popover>
       </div>
     </div>
   `,
@@ -77,7 +125,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       }
       .matrix-toolbar {
         display: grid;
-        grid-template-columns: minmax(220px, 480px) max-content max-content 220px;
+        grid-template-columns: minmax(220px, 480px) max-content max-content;
         align-items: end;
         gap: var(--layout-gap-md);
       }
@@ -97,17 +145,50 @@ import { CaptureOrdersService } from './capture-orders.service';
       .status-filter-control {
         display: flex;
       }
-      .toolbar-field--date-range {
-        inline-size: 220px;
-        min-inline-size: 220px;
-        max-inline-size: 220px;
+      .toolbar-field__spacer {
+        display: block;
+        block-size: var(--font-line-height-content-ui);
+      }
+      .more-filters-trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: var(--layout-gap-xs);
+        block-size: 32px;
+        padding-inline: 10px;
+        border: var(--layout-border-thin) solid var(--color-border-neutral-default);
+        border-radius: var(--radius-sm);
+        background-color: var(--elevation-surface-default, var(--color-background-base));
+        color: var(--color-text-base-default);
+        font-family: var(--font-family-content);
+        font-size: var(--font-size-content-ui);
+        line-height: var(--font-line-height-content-ui);
+        font-weight: var(--font-weight-regular);
+        letter-spacing: var(--font-letter-spacing-content);
+        white-space: nowrap;
+        cursor: pointer;
+        transition: border-color var(--motion-duration-fast) var(--motion-easing-default);
+      }
+      .more-filters-trigger:focus-visible,
+      .more-filters-trigger--open {
+        outline: none;
+        border-color: var(--color-border-brand-default);
+        box-shadow: 0 0 0 2px var(--color-border-brand-subtle);
+      }
+      .more-filters-popover {
+        --elevation-surface-default: var(--color-background-base);
+        display: grid;
+        inline-size: 240px;
+        gap: var(--layout-gap-lg);
+        padding: var(--layout-padding-lg);
+        border: var(--layout-border-thin) solid var(--color-border-neutral-subtle);
+        border-radius: var(--radius-lg);
+        background-color: var(--color-background-base);
+        box-shadow: var(--shadow-xl);
       }
       @media (max-width: 1080px) {
         .matrix-toolbar {
-          grid-template-columns: minmax(220px, 1fr) max-content;
-        }
-        .toolbar-field--date-range {
-          grid-column: 1 / -1;
+          grid-template-columns: minmax(220px, 1fr) max-content max-content;
         }
       }
       @media (max-width: 767px) {
@@ -115,8 +196,7 @@ import { CaptureOrdersService } from './capture-orders.service';
           grid-template-columns: 1fr;
         }
         .toolbar-field--status,
-        .status-filter-control,
-        .toolbar-field--date-range {
+        .status-filter-control {
           inline-size: 100%;
           min-inline-size: 0;
           max-inline-size: none;
@@ -136,6 +216,45 @@ export class CaptureOrderToolbarComponent {
     { label: 'Todos los contratos', value: '__all__' },
     ...CAPTURE_CONTRACT_STATUSES.map((status) => ({ label: status, value: status })),
   ];
+  protected readonly locationOptions: InputDropdownOption[] = [
+    { label: 'Todas', value: '__all__' },
+    { label: 'Con ubicación', value: 'with' },
+    { label: 'Sin posición disponible', value: 'no-signal' },
+    { label: 'Sin GPS', value: 'no-gps' },
+  ];
+
+  protected readonly moreFiltersOpen = signal(false);
+  protected readonly activeExtraFilterCount = computed(() => {
+    let count = 0;
+    if (this.state.contractFilter()) count++;
+    if (this.state.locationFilter()) count++;
+    if (this.state.dateFrom() && this.state.dateTo()) count++;
+    return count;
+  });
+
+  protected toggleMoreFilters(): void {
+    this.moreFiltersOpen.update((isOpen) => !isOpen);
+  }
+  protected closeMoreFilters(): void {
+    this.moreFiltersOpen.set(false);
+  }
+  /**
+   * `closeOnOverlayClick` del propio `cs-popover` va desactivado (ver
+   * arriba) porque no distingue un clic realmente afuera de un clic dentro
+   * de un popover anidado (el menú de Contrato/Ubicación o el calendario de
+   * fecha — todos `cs-popover` propios, portados a `document.body`). Este
+   * listener hace esa distinción a mano: cualquier clic dentro del
+   * disparador o de CUALQUIER `cs-popover` (el propio de "Más filtros" o uno
+   * anidado) no cierra; todo lo demás sí. Mismo patrón que
+   * `fleet-map.page.ts#onDocumentClick`.
+   */
+  @HostListener('document:click', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.moreFiltersOpen()) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.more-filters-trigger, cs-popover')) return;
+    this.closeMoreFilters();
+  }
 
   protected onDateRangeChange(value: DateRangeFilterValue): void {
     this.state.setDateRange(value.from, value.to);

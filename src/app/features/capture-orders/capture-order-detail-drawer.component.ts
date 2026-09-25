@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { Button, Icon, Tab, Tabs, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, Icon, Tab, Tabs, Tag, Tooltip } from '@iamacalupuenzo-ui/comsatel-ds';
 import { CAPTURE_DOCUMENT_DEFINITIONS } from '../../core/orders/mock-capture-orders.service';
 import { SideDrawerComponent } from '../../shared/side-drawer.component';
 import { CaptureOrdersService } from './capture-orders.service';
@@ -15,7 +15,7 @@ import { CaptureOrdersService } from './capture-orders.service';
  */
 @Component({
   selector: 'app-capture-order-detail-drawer',
-  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag],
+  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag, Tooltip],
   template: `
     <app-side-drawer
       [isOpen]="state.detailsOpen()"
@@ -61,24 +61,12 @@ import { CaptureOrdersService } from './capture-orders.service';
                     </dd>
                   </div>
                   <div>
-                    <dt>Propietario</dt>
-                    <dd>{{ state.ownerOf(order.unitCode) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Fuente de la orden</dt>
-                    <dd>{{ order.source }}</dd>
-                  </div>
-                  <div>
                     <dt>Expediente</dt>
                     <dd>{{ order.caseNumber }}</dd>
                   </div>
                   <div>
                     <dt>Fecha de registro</dt>
-                    <dd>{{ order.createdAt }}</dd>
-                  </div>
-                  <div>
-                    <dt>Fecha de recepción</dt>
-                    <dd>{{ state.formatReceivedDate(order.receivedOn) }}</dd>
+                    <dd>{{ state.createdDateLabel(order.createdAt) }}</dd>
                   </div>
                   <div>
                     <dt>Estado</dt>
@@ -100,7 +88,39 @@ import { CaptureOrdersService } from './capture-orders.service';
                   @if (order.observationReason) {
                     <div class="detail-data__full-width">
                       <dt>Observación</dt>
-                      <dd>{{ order.observationReason }}</dd>
+                      <dd class="detail-data__editable">
+                        {{ order.observationReason }}
+                        <button
+                          type="button"
+                          class="detail-data__edit"
+                          aria-label="Editar observación"
+                          (click)="state.openEditObservation(order)"
+                        >
+                          <cs-icon name="pencil" [size]="12" aria-hidden="true" />
+                        </button>
+                      </dd>
+                    </div>
+                  }
+                  @if (order.captureOfficer) {
+                    <div>
+                      <dt>Responsable de la captura</dt>
+                      <dd class="detail-data__editable">
+                        {{ order.captureOfficer }}
+                        <button
+                          type="button"
+                          class="detail-data__edit"
+                          aria-label="Editar responsable y ubicación de la captura"
+                          (click)="state.openEditCaptureDetails(order)"
+                        >
+                          <cs-icon name="pencil" [size]="12" aria-hidden="true" />
+                        </button>
+                      </dd>
+                    </div>
+                  }
+                  @if (order.captureLocation) {
+                    <div>
+                      <dt>Ubicación de la captura</dt>
+                      <dd>{{ order.captureLocation }}</dd>
                     </div>
                   }
                 </dl>
@@ -135,12 +155,22 @@ import { CaptureOrdersService } from './capture-orders.service';
               <section class="detail-section detail-location" aria-labelledby="detail-location-title">
                 <div class="detail-location__header">
                   <h3 id="detail-location-title">Última ubicación</h3>
-                  <span
-                    class="detail-location__history"
-                    aria-label="Historial de ubicaciones: próximamente disponible"
-                  >
-                    <cs-icon name="history" [size]="16" aria-hidden="true" />Historial
-                  </span>
+                  <div class="detail-location__header-actions">
+                    <cs-tooltip [content]="state.mapStatusReason(order)" side="left">
+                      <cs-tag
+                        [value]="state.appearsOnMap(order) ? 'En el mapa' : 'Fuera del mapa'"
+                        [severity]="state.appearsOnMap(order) ? 'success' : 'secondary'"
+                        [rounded]="true"
+                        size="sm"
+                      />
+                    </cs-tooltip>
+                    <span
+                      class="detail-location__history"
+                      aria-label="Historial de ubicaciones: próximamente disponible"
+                    >
+                      <cs-icon name="history" [size]="16" aria-hidden="true" />Historial
+                    </span>
+                  </div>
                 </div>
                 <div class="detail-location__value">
                   <cs-icon name="map-pin" [size]="18" aria-hidden="true" />
@@ -188,7 +218,7 @@ import { CaptureOrdersService } from './capture-orders.service';
                     </cs-button>
                   }
                   @if (state.canRevertToPending(order)) {
-                    <cs-button variant="default" size="sm" (click)="state.revertToPending(order)">
+                    <cs-button variant="default" size="sm" (click)="state.revertFromDetails(order)">
                       <cs-icon name="circle-dot" [size]="16" aria-hidden="true" />Volver a
                       pendiente
                     </cs-button>
@@ -266,6 +296,35 @@ import { CaptureOrdersService } from './capture-orders.service';
         color: var(--color-text-base-default);
         font-size: var(--font-size-content-ui);
         line-height: var(--font-line-height-content-ui);
+      }
+      .detail-location__header-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--layout-gap-md);
+      }
+      .detail-data__editable {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--layout-gap-2xs);
+      }
+      .detail-data__edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--layout-padding-2xs);
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-icon-neutral-subtlest);
+        cursor: pointer;
+      }
+      .detail-data__edit:hover {
+        color: var(--color-text-brand-default);
+        background: var(--color-background-neutral-subtlest);
+      }
+      .detail-data__edit:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 var(--layout-border-thick) var(--color-border-focused);
       }
       .status-timeline {
         display: grid;

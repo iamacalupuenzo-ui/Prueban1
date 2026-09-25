@@ -9,6 +9,7 @@ import {
   RecoverySourceSelection,
   RecoverySourceType,
 } from '../../core/recoveries/mock-recovery-orders.service';
+import { RecoveriesTransitionsService } from './recoveries-transitions.service';
 import { UnitOption } from '../../shared/unit-autocomplete.component';
 import { UnitTypeFilterOption } from '../../shared/unit-type-multi-select.component';
 
@@ -140,6 +141,7 @@ const UNIT_OPTIONS: RecoveryUnitFixture[] = [
 @Injectable({ providedIn: 'root' })
 export class RecoveriesService {
   private readonly api = inject(MockRecoveryOrdersService);
+  private readonly transitions = inject(RecoveriesTransitionsService);
 
   /** Passthrough de la carga de fixtures: la tabla y el estado vacío la consumen directo. */
   readonly fixturesLoading = this.api.fixturesLoading;
@@ -653,9 +655,7 @@ export class RecoveriesService {
   private async register(): Promise<void> {
     this.saving.set(true);
     const editing = this.editingOrder();
-    const result = editing
-      ? await this.api.update(editing.id, this.draft())
-      : await this.api.create(this.draft());
+    const result = await this.transitions.register(this.draft(), editing?.id ?? null);
     this.saving.set(false);
     if (result.kind !== 'success') {
       this.confirmationOpen.set(false);
@@ -679,21 +679,7 @@ export class RecoveriesService {
   }
   private validate(): boolean {
     const draft = this.draft();
-    const errors: Record<FormField, string> = {
-      unitCode: draft.unitCode.trim() ? '' : 'Ingresa el código de la unidad.',
-      sourceType: draft.sourceType ? '' : 'Selecciona la fuente del recupero.',
-      sourceName: '',
-      insurerName: draft.insurerName.trim() ? '' : 'Selecciona el seguro de la unidad.',
-      serviceType: draft.serviceType.trim() ? '' : 'Selecciona el tipo de servicio.',
-      theftModality: draft.theftModality ? '' : 'Selecciona la modalidad de robo.',
-      referenceNumber: draft.referenceNumber.trim()
-        ? ''
-        : `Ingresa ${this.referenceLabel(draft.sourceType).toLocaleLowerCase()}.`,
-      contactName: '',
-      contactPhone: '',
-      operationalNotes: '',
-      evidence: '',
-    };
+    const errors = this.transitions.validateDraft(draft, this.referenceLabel(draft.sourceType));
     this.errors.set(errors);
     return Object.values(errors).every((error) => !error);
   }
@@ -836,10 +822,10 @@ export class RecoveriesService {
     this.saving.set(true);
     const result =
       kind === 'advance'
-        ? await this.api.advanceToManagement(order.id)
+        ? await this.transitions.advanceToManagement(order.id)
         : kind === 'recovered'
-          ? await this.api.markRecovered(order.id)
-          : await this.api.close(order.id);
+          ? await this.transitions.markRecovered(order.id)
+          : await this.transitions.close(order.id);
     this.saving.set(false);
 
     if (result.kind !== 'success') {
@@ -893,7 +879,7 @@ export class RecoveriesService {
     }
 
     this.saving.set(true);
-    const result = await this.api.annul(order.id, this.annulmentReason());
+    const result = await this.transitions.annul(order.id, this.annulmentReason());
     this.saving.set(false);
 
     if (result.kind !== 'success') {

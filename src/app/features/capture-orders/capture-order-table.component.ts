@@ -22,6 +22,7 @@ import {
   TableColumn,
   TableRow,
   Tag,
+  Tooltip,
   type ColumnManagerItem,
   type DropdownItem,
 } from '@iamacalupuenzo-ui/comsatel-ds';
@@ -55,6 +56,7 @@ import { CaptureOrdersService } from './capture-orders.service';
     Popover,
     Table,
     Tag,
+    Tooltip,
   ],
   template: `
     <ng-template #statusCell let-order
@@ -72,24 +74,66 @@ import { CaptureOrdersService } from './capture-orders.service';
     </ng-template>
     <ng-template #lastLocationCell let-order>
       @if (state.locationOf(order.unitCode); as location) {
+        <span class="last-location-value">
+          <cs-icon
+            name="satellite"
+            [size]="14"
+            style="color: var(--color-text-success-default)"
+            aria-hidden="true"
+          />
+          <span
+            class="copy-on-hover"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="
+              state.copiedLocation() === location.lastLocation
+                ? 'Ubicación copiada'
+                : 'Copiar última ubicación de ' + order.unitCode
+            "
+            (click)="state.copyLastLocation(location.lastLocation)"
+            (keydown.enter)="state.copyLastLocation(location.lastLocation)"
+            (keydown.space)="$event.preventDefault(); state.copyLastLocation(location.lastLocation)"
+          >
+            <span>{{ location.lastLocation }}</span>
+            <cs-icon name="copy" [size]="12" aria-hidden="true" />
+          </span>
+        </span>
+      } @else {
+        <span class="last-location-empty">
+          <cs-icon
+            name="satellite"
+            [size]="14"
+            [style.color]="
+              state.hasGpsOf(order.unitCode)
+                ? 'var(--color-text-warning-default)'
+                : 'var(--color-icon-neutral-subtlest)'
+            "
+            aria-hidden="true"
+          />
+          <span>{{ state.hasGpsOf(order.unitCode) ? 'Sin posición disponible' : 'Sin GPS' }}</span>
+        </span>
+      }
+    </ng-template>
+    <ng-template #caseNumberCell let-order>
+      @if (order.caseNumber; as caseNumber) {
         <span
           class="copy-on-hover"
           role="button"
           tabindex="0"
           [attr.aria-label]="
-            state.copiedLocation() === location.lastLocation
-              ? 'Ubicación copiada'
-              : 'Copiar última ubicación de ' + order.unitCode
+            state.copiedCaseNumber() === caseNumber
+              ? 'Expediente copiado'
+              : 'Copiar expediente de ' + order.unitCode
           "
-          (click)="state.copyLastLocation(location.lastLocation)"
-          (keydown.enter)="state.copyLastLocation(location.lastLocation)"
-          (keydown.space)="$event.preventDefault(); state.copyLastLocation(location.lastLocation)"
+          (click)="state.copyCaseNumber(caseNumber)"
+          (keydown.enter)="state.copyCaseNumber(caseNumber)"
+          (keydown.space)="$event.preventDefault(); state.copyCaseNumber(caseNumber)"
         >
-          <span>{{ location.lastLocation }}</span>
+          <span>{{ caseNumber }}</span>
           <cs-icon name="copy" [size]="12" aria-hidden="true" />
         </span>
       } @else {
-        <span>Sin posición disponible</span>
+        <span>Sin expediente</span>
       }
     </ng-template>
     <ng-template #contractCell let-order>
@@ -103,25 +147,47 @@ import { CaptureOrdersService } from './capture-orders.service';
     <ng-template #documentsCell let-order>
       <span class="documents-checklist" [attr.aria-label]="documentsSummary(order)">
         @for (definition of documentDefinitions; track definition.type) {
-          <button
-            type="button"
-            class="documents-checklist__box"
-            role="checkbox"
-            [attr.aria-checked]="state.hasDocument(order, definition.type)"
-            [attr.aria-label]="
-              (state.hasDocument(order, definition.type) ? 'Quitar ' : 'Marcar ') +
-              definition.label +
-              ' — ' +
-              order.unitCode
-            "
-            [title]="definition.label"
-            (click)="state.toggleDocumentMark(order, definition.type)"
-          >
-            @if (state.hasDocument(order, definition.type)) {
-              <cs-icon name="check" [size]="12" aria-hidden="true" />
-            }
-          </button>
+          <cs-tooltip [content]="definition.label" side="top">
+            <button
+              type="button"
+              class="documents-checklist__box"
+              role="checkbox"
+              [attr.aria-checked]="state.hasDocument(order, definition.type)"
+              [attr.aria-label]="
+                (state.hasDocument(order, definition.type) ? 'Quitar ' : 'Marcar ') +
+                definition.label +
+                ' — ' +
+                order.unitCode
+              "
+              (click)="state.toggleDocumentMark(order, definition.type); blurTrigger($event)"
+            >
+              @if (state.hasDocument(order, definition.type)) {
+                <cs-icon name="check" [size]="12" aria-hidden="true" />
+              }
+            </button>
+          </cs-tooltip>
         }
+        <cs-tooltip [content]="state.mapStatusReason(order)" side="top">
+          <span
+            class="documents-checklist__map-status"
+            role="img"
+            [attr.aria-label]="
+              (state.appearsOnMap(order) ? 'Visible en el mapa — ' : 'No visible en el mapa — ') +
+              state.mapStatusReason(order)
+            "
+          >
+            <cs-icon
+              name="map-pin"
+              [size]="14"
+              [style.color]="
+                state.appearsOnMap(order)
+                  ? 'var(--color-text-success-default)'
+                  : 'var(--color-icon-neutral-subtlest)'
+              "
+              aria-hidden="true"
+            />
+          </span>
+        </cs-tooltip>
       </span>
     </ng-template>
     <ng-template #actionsCell let-order>
@@ -438,6 +504,20 @@ import { CaptureOrdersService } from './capture-orders.service';
           padding-bottom: var(--layout-padding-xs);
         }
       }
+      .last-location-empty,
+      .last-location-value {
+        display: inline-flex;
+        align-items: flex-start;
+        gap: var(--layout-gap-xs);
+      }
+      .last-location-empty > cs-icon,
+      .last-location-value > cs-icon {
+        margin-top: var(--layout-padding-2xs);
+        flex-shrink: 0;
+      }
+      .last-location-empty {
+        color: var(--color-text-base-subtle);
+      }
     `,
   ],
 })
@@ -458,6 +538,8 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   @ViewChild('unitCell', { static: true }) private unitCellRef!: TemplateRef<unknown>;
   @ViewChild('lastLocationCell', { static: true })
   private lastLocationCellRef!: TemplateRef<unknown>;
+  @ViewChild('caseNumberCell', { static: true })
+  private caseNumberCellRef!: TemplateRef<unknown>;
   @ViewChild('contractCell', { static: true }) private contractCellRef!: TemplateRef<unknown>;
   @ViewChild('documentsCell', { static: true }) private documentsCellRef!: TemplateRef<unknown>;
   @ViewChild('actionsCell', { static: true }) private actionsCellRef!: TemplateRef<unknown>;
@@ -465,14 +547,15 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   private captureOrdersTableRef!: ElementRef<HTMLElement>;
 
   private readonly configurableTableColumns: readonly TableColumn[] = [
-    { key: 'financiera', label: 'Financiera', width: '144px', isSortable: true },
+    { key: 'created', label: 'Fecha de registro', width: '132px', isSortable: true },
+    { key: 'financiera', label: 'Financiera', width: '116px', isSortable: true },
     { key: 'unit', label: 'Placa', width: '128px', isSortable: true },
     { key: 'engine', label: 'Motor', width: '144px', isSortable: true },
+    { key: 'caseNumber', label: 'Expediente', width: '176px', isSortable: true },
     { key: 'contract', label: 'Contrato', width: '128px', isSortable: true },
     { key: 'documents', label: 'Documentos', width: '140px', isSortable: true },
     { key: 'lastLocation', label: 'Última ubicación', isSortable: true },
     { key: 'status', label: 'Estado', width: '160px', isSortable: true },
-    { key: 'created', label: 'Fecha de registro', width: '176px', isSortable: true },
   ];
   private readonly actionsTableColumn: TableColumn = {
     key: 'actions',
@@ -481,14 +564,15 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
     align: 'center',
   };
   private readonly tableColumnMinWidths: Readonly<Record<string, number>> = {
-    financiera: 144,
+    created: 132,
+    financiera: 116,
     unit: 128,
     engine: 144,
+    caseNumber: 176,
     contract: 128,
     documents: 140,
     lastLocation: 272,
     status: 160,
-    created: 176,
     actions: 72,
   };
 
@@ -623,11 +707,21 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
     // if (item.value === 'edit') this.state.openEdit(order); — ver nota en actionItems().
     if (item.value === 'close') this.state.openCloseConfirmation(order);
     if (item.value === 'observe') this.state.openObservation(order);
-    if (item.value === 'revert-to-pending') void this.state.revertToPending(order);
+    if (item.value === 'revert-to-pending') this.state.openRevertConfirmation(order);
     if (item.value === 'annul') this.state.openAnnulment(order);
   }
   protected documentsSummary(order: CaptureOrder): string {
     return `${this.state.documentsCompleteCountOf(order)} de ${this.documentDefinitions.length} documentos adjuntos`;
+  }
+  /**
+   * `cs-tooltip` se mantiene visible mientras su trigger tiene foco
+   * (`:focus-within`) — al marcar/desmarcar un documento con clic, el botón
+   * queda enfocado y el tooltip se ve "pegado" en vez de comportarse como
+   * un hover normal. Quitar el foco después del clic lo devuelve a ese
+   * comportamiento: solo se muestra mientras el mouse está encima.
+   */
+  protected blurTrigger(event: Event): void {
+    (event.currentTarget as HTMLElement | null)?.blur();
   }
   private tableCellFor(order: CaptureOrder, key: string): TableRow['cells'][number] {
     switch (key) {
@@ -639,6 +733,8 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
         return { template: this.lastLocationCellRef, context: { $implicit: order } };
       case 'engine':
         return this.state.engineCodeOf(order.unitCode);
+      case 'caseNumber':
+        return { template: this.caseNumberCellRef, context: { $implicit: order } };
       case 'contract':
         return { template: this.contractCellRef, context: { $implicit: order } };
       case 'documents':
@@ -646,7 +742,7 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
       case 'status':
         return { template: this.statusCellRef, context: { $implicit: order } };
       case 'created':
-        return order.createdAt;
+        return this.state.createdDateLabel(order.createdAt);
       case 'actions':
         return { template: this.actionsCellRef, context: { $implicit: order } };
       default:

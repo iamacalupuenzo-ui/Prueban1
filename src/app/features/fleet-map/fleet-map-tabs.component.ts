@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { Icon } from '@iamacalupuenzo-ui/comsatel-ds';
-import { FleetMapService } from './fleet-map.service';
+import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
 
 /**
  * Pestañas para navegar entre el Mapa y las bitácoras abiertas — acotadas a
@@ -13,8 +13,8 @@ import { FleetMapService } from './fleet-map.service';
   selector: 'app-fleet-map-tabs',
   imports: [Icon],
   template: `
-    @if (state.openBitacoraUnitIds().length) {
-      <div class="fleet-map-tabs" role="tablist" aria-label="Mapa y bitácoras abiertas">
+    @if (state.openBitacoraUnitIds().length || state.openFollowUnitIds().length) {
+      <div class="fleet-map-tabs" role="tablist" aria-label="Mapa, bitácoras y seguimientos abiertos">
         <button
           type="button"
           class="fleet-map-tabs__tab fleet-map-tabs__tab--map"
@@ -26,15 +26,30 @@ import { FleetMapService } from './fleet-map.service';
           <cs-icon name="map" [size]="14" aria-hidden="true" />Mapa
         </button>
         @for (unit of state.openBitacoraUnits(); track unit.id) {
-          <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === unit.id" [class.is-active]="state.activeTab() === unit.id">
-            <button type="button" class="fleet-map-tabs__label" (click)="state.switchTab(unit.id)">
-              <cs-icon [name]="unit.status === 'En ruta' ? 'activity' : 'wifi-off'" [size]="12" aria-hidden="true" />{{ unit.vehicleCode }}
+          <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === bitacoraTabKey(unit.id)" [class.is-active]="state.activeTab() === bitacoraTabKey(unit.id)">
+            <button type="button" class="fleet-map-tabs__label" [attr.aria-label]="'Bitácora de ' + unit.vehicleCode" (click)="state.switchTab(bitacoraTabKey(unit.id))">
+              <cs-icon name="file-text" [size]="12" aria-hidden="true" />{{ unit.vehicleCode }}
             </button>
             <button
               type="button"
               class="fleet-map-tabs__close"
               [attr.aria-label]="'Cerrar bitácora de ' + unit.vehicleCode"
               (click)="state.closeBitacoraTab(unit.id)"
+            >
+              <cs-icon name="x" [size]="12" aria-hidden="true" />
+            </button>
+          </span>
+        }
+        @for (unit of state.openFollowUnits(); track unit.id) {
+          <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === followTabKey(unit.id)" [class.is-active]="state.activeTab() === followTabKey(unit.id)">
+            <button type="button" class="fleet-map-tabs__label" [attr.aria-label]="'Siguiendo a ' + unit.vehicleCode" (click)="state.switchTab(followTabKey(unit.id))">
+              <cs-icon name="eye" [size]="12" aria-hidden="true" />{{ unit.vehicleCode }}
+            </button>
+            <button
+              type="button"
+              class="fleet-map-tabs__close"
+              [attr.aria-label]="'Dejar de seguir a ' + unit.vehicleCode"
+              (click)="state.closeFollowTab(unit.id)"
             >
               <cs-icon name="x" [size]="12" aria-hidden="true" />
             </button>
@@ -118,4 +133,13 @@ import { FleetMapService } from './fleet-map.service';
 })
 export class FleetMapTabsComponent {
   protected readonly state = inject(FleetMapService);
+
+  // Helpers tipados para la plantilla: la concatenación de strings (`'bitacora:' + unit.id`)
+  // no se angosta al tipo plantilla `FleetMapTabKey` que espera `switchTab`.
+  protected bitacoraTabKey(unitId: string): FleetMapTabKey {
+    return `bitacora:${unitId}`;
+  }
+  protected followTabKey(unitId: string): FleetMapTabKey {
+    return `follow:${unitId}`;
+  }
 }

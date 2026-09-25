@@ -325,6 +325,65 @@ resolverse con un override.
   el contenido, el menú usa su ancho de contenido normalmente (el caso ya
   cubierto hoy).
 
+### Ancho del menú de `InputDropdown` vs. su disparador — brecha ampliada con investigación externa
+
+Fecha: 22 de septiembre de 2026. Amplía la propuesta anterior de esta misma
+sección ("Ancho mínimo del menú de `InputDropdown`", 20 de septiembre) con
+una investigación externa que Enzo pidió validar antes de decidir cómo
+construirlo — se dio cuenta del problema comparando en pantalla el menú de
+"Estado" (más ancho que su disparador) contra el de "Contrato" (más angosto)
+dentro del popover "Más filtros".
+
+- **Confirmado en el código fuente del DS.** `Popover` (el primitivo
+  genérico sobre el que se construye `InputDropdown`) ya tiene un input
+  público exacto para esto — `matchTriggerWidth: boolean`, default `false` —
+  con este comentario en su propio código: *"Iguala el ancho del panel al
+  del trigger — el caso típico de un combobox/select construido sobre este
+  primitivo."* `InputDropdown` arma su `<cs-popover>` interno sin pasarlo,
+  así que la capacidad ya existe en el DS pero no está conectada al
+  componente que la necesita.
+- **Validado contra la industria** (a pedido explícito de Enzo, no una
+  suposición): en los sistemas de diseño web reales revisados, que el menú
+  coincida con el ancho del disparador es el comportamiento **por defecto**,
+  no una opción entre iguales:
+  - Material Design / Angular Material — el menú se ajusta estrictamente al
+    ancho del `select` desde la v15.
+    [angular/components#26000](https://github.com/angular/components/issues/26000)
+  - Ant Design — `dropdownMatchSelectWidth` viene en `true` por defecto.
+    [ant-design/ant-design#22173](https://github.com/ant-design/ant-design/issues/22173)
+  - Fluent UI (Microsoft) — `dropdownWidth` por defecto es `0`, que
+    significa "usa el ancho del campo"; ajustar por contenido es un pedido
+    recurrente de la comunidad, no el default de fábrica.
+    [microsoft/fluentui#16298](https://github.com/microsoft/fluentui/pull/16298)
+  - Carbon (IBM) — el sistema más parecido en espíritu a este proyecto
+    (herramientas operativas internas, no e-commerce) — tiene una regla
+    explícita y no opcional: *"An open and closed dropdown should be the
+    same width."*
+    [Carbon — Dropdown usage](https://carbondesignsystem.com/components/dropdown/usage/)
+  - La única excepción real encontrada es macOS nativo (Apple HIG): el menú
+    se ajusta a la opción más ancha — pero es convención de sistema
+    operativo de escritorio, no de un design system web, así que no aplica
+    como referencia acá.
+    [Apple HIG — Pop-up buttons](https://developers.apple.com/design/human-interface-guidelines/components/menus-and-actions/pop-up-buttons/)
+- **Conclusión — reemplaza la propuesta del 20 de septiembre.** No basta con
+  que el menú tenga como piso el ancho del disparador
+  (`max(contenido, disparador)`, la propuesta anterior); el estándar real de
+  la industria es que el menú **coincida exactamente** con el ancho del
+  disparador salvo que la aplicación pida explícitamente lo contrario. Es
+  justo lo que `matchTriggerWidth` ya resuelve en `Popover` — solo falta
+  conectarlo.
+- **No corregible desde esta aplicación.** El `<cs-popover>` interno de
+  `InputDropdown` no expone ese input al consumidor; conectarlo requiere
+  tocar el componente publicado, fuera del contrato de consumo de este
+  proyecto.
+- **Propuesta para el DS.** Agregar a `InputDropdown` un input público
+  `matchTriggerWidth: boolean` — sugerido default **`true`** (a diferencia
+  del default `false` del `Popover` genérico) para que el comportamiento de
+  fábrica de un select/dropdown coincida con lo que la industria espera sin
+  que cada consumidor tenga que pedirlo a mano — y pasarlo directo al
+  `<cs-popover>` interno. Mientras no exista, la aplicación sigue con el
+  ancho por contenido que ya tiene hoy.
+
 ### Texto del disparador de `ColumnManager` sin unidad — brecha del DS
 
 - El disparador de `cs-column-manager` muestra `"7 de 7 visibles"`. El texto
@@ -955,6 +1014,40 @@ override de `.cs-select__label` que sí tiene Capturas, porque ese ya está
 señalado en este mismo documento como una corrección basada en una premisa
 falsa (brecha "Rol tipográfico equivocado en labels externos de campo
 `md`"), no un patrón a replicar.
+
+### `cs-table` sin filtro por columna en el encabezado — brecha del DS
+
+Fecha: 22 de septiembre de 2026.
+
+- Enzo preguntó por el patrón de Ant Design Table: un ícono de embudo en el
+  encabezado de cada columna filtrable, con su propio menú de valores, en vez
+  de agrupar los filtros en una barra o popover aparte de la tabla.
+- Se verificó el contrato público de `cs-table` antes de opinar sobre el
+  patrón:
+  ```js
+  // node_modules/@iamacalupuenzo-ui/comsatel-ds/fesm2022/iamacalupuenzo-ui-comsatel-ds.mjs
+  static ɵcmp = i0.ɵɵngDeclareComponent({ ..., selector: "cs-table",
+    inputs: { columns: "columns", rows: "rows", caption: "caption",
+      isLoading: "isLoading", sortKey: "sortKey", sortOrder: "sortOrder",
+      highlightedRowKey: "highlightedRowKey", skeletonRowCount: "skeletonRowCount",
+      minWidth: "minWidth" },
+    outputs: { sort: "sort" }, ... });
+  ```
+  El encabezado de cada columna lo renderiza el propio componente (`label` +
+  flecha de orden si `isSortable`); no existe ningún input o slot para
+  agregar contenido adicional (un ícono de filtro, por ejemplo) dentro de esa
+  celda. No es construible desde la aplicación sin tocar el interior del
+  componente, que el contrato de consumo prohíbe.
+- Propuesta para el DS: agregar a `TableColumn` un campo opcional, por
+  ejemplo `filterTemplate?: TemplateRef<unknown>` (mismo mecanismo que ya
+  usan las celdas de fila vía `isTemplateCell`), que `cs-table` renderice
+  junto al `label` del encabezado cuando esté presente. Así cada aplicación
+  compone su propio menú de filtro (opciones, rango de fechas, lo que
+  corresponda) sin que el DS tenga que saber de dominio — solo reserva el
+  espacio y lo pinta.
+- Mientras no exista, Capturas sigue con el patrón de barra de herramientas
+  (`Buscar` + `Estado` visibles, resto detrás de "Más filtros") — ver
+  `capture-order-toolbar.component.ts`.
 
 ## Pendientes de definición funcional
 

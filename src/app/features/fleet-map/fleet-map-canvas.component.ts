@@ -1,6 +1,6 @@
 import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
 import * as L from 'leaflet';
-import type { FleetUnit, FleetUnitType } from '../../core/fleet/fleet-telemetry.service';
+import { isUnitStationaryOverThreshold, type FleetUnit, type FleetUnitType } from '../../core/fleet/fleet-telemetry.service';
 import { FleetMapService } from './fleet-map.service';
 import type { TripEvent } from './trip-events-panel.component';
 
@@ -59,6 +59,8 @@ const STATUS_TOKEN: Record<FleetUnit['status'], 'active' | 'offline'> = {
   'En ruta': 'active',
   'Sin señal': 'offline',
 };
+
+const STATIONARY_ALERT_RADIUS_METERS = 110;
 
 function estimatePillWidth(label: string, secondary: string): number {
   const textWidth = Math.max(label.length * 6.5, secondary.length * 5.5);
@@ -238,8 +240,8 @@ function createUnitIcon(unit: FleetUnit): L.DivIcon {
   const totalHeight = pillHeight + stemHeight + stemDot;
 
   const html = `
-    <div style="display:inline-flex;flex-direction:column;align-items:center;font-family:var(--font-family-content);">
-      <div style="display:inline-flex;align-items:center;gap:var(--layout-gap-sm);padding-block:var(--layout-padding-xs);padding-inline:var(--layout-padding-xs) var(--layout-padding-lg);border-radius:var(--radius-full);background:var(--elevation-surface-default);box-shadow:var(--shadow-md);border:2px solid var(--elevation-surface-default);">
+    <div style="display:flex;flex-direction:column;align-items:center;width:${pillWidth}px;height:${totalHeight}px;box-sizing:border-box;font-family:var(--font-family-content);">
+      <div style="display:inline-flex;flex:none;align-items:center;height:${pillHeight}px;box-sizing:border-box;gap:var(--layout-gap-sm);padding-block:var(--layout-padding-xs);padding-inline:var(--layout-padding-xs) var(--layout-padding-lg);border-radius:var(--radius-full);background:var(--elevation-surface-default);box-shadow:var(--shadow-md);border:2px solid var(--elevation-surface-default);">
         <div style="position:relative;flex-shrink:0;width:${ICON_CIRCLE_PX}px;height:${ICON_CIRCLE_PX}px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-full);background:var(--color-background-neutral-subtlest);border:1px solid var(--color-border-neutral-subtle);color:var(--color-text-base-subtle);">
           <svg width="${ICON_GLYPH_PX}" height="${ICON_GLYPH_PX}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${VEHICLE_ICON_PATH[unit.type]}</svg>
           <div style="position:absolute;top:-1px;right:-1px;width:${STATUS_DOT_PX}px;height:${STATUS_DOT_PX}px;border-radius:var(--radius-full);border:2px solid var(--elevation-surface-default);background:var(--color-map-vehicle-${status});"></div>
@@ -249,11 +251,18 @@ function createUnitIcon(unit: FleetUnit): L.DivIcon {
           <span style="font-size:var(--font-size-label-micro);font-weight:var(--font-weight-emphasis);color:var(--color-text-base-subtlest);line-height:1;white-space:nowrap;">${secondary}</span>
         </div>
       </div>
-      <div style="width:2px;height:${stemHeight}px;background:var(--color-border-neutral-boldest);opacity:.5;"></div>
-      <div style="width:${stemDot}px;height:${stemDot}px;border-radius:var(--radius-full);background:var(--color-border-neutral-boldest);"></div>
+      <div style="flex:none;width:2px;height:${stemHeight}px;background:var(--color-border-neutral-boldest);opacity:.5;"></div>
+      <div style="flex:none;width:${stemDot}px;height:${stemDot}px;border-radius:var(--radius-full);background:var(--color-border-neutral-boldest);"></div>
     </div>`;
 
-  return L.divIcon({ html, className: '', iconSize: [pillWidth, totalHeight], iconAnchor: [pillWidth / 2, totalHeight] });
+  return L.divIcon({
+    html,
+    className: '',
+    iconSize: [pillWidth, totalHeight],
+    // La coordenada de Leaflet debe caer en el centro del punto terminal,
+    // no en su borde inferior.
+    iconAnchor: [pillWidth / 2, totalHeight - stemDot / 2],
+  });
 }
 
 /**
@@ -303,6 +312,7 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
   private readonly state = inject(FleetMapService);
   private map?: L.Map;
   private markersLayer?: L.LayerGroup;
+  private stationaryLayer?: L.LayerGroup;
   private trailLayer?: L.LayerGroup;
   private eventsLayer?: L.LayerGroup;
   private trailRequestSeq = 0;
@@ -310,6 +320,7 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
   private trailPath: [number, number][] | null = null;
   private trailArrowColor: string | null = null;
   private trailArrowMarkers: L.Marker[] = [];
+  private stationaryRefreshInterval?: number;
 
   constructor() {
     effect(() => {
@@ -334,6 +345,7 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
       this.map,
     );
     this.markersLayer = L.layerGroup().addTo(this.map);
+    this.stationaryLayer = L.layerGroup().addTo(this.map);
     this.trailLayer = L.layerGroup().addTo(this.map);
     this.eventsLayer = L.layerGroup().addTo(this.map);
     // 'moveend' cubre tanto pan como zoom (a diferencia de solo 'zoomend'),
@@ -341,6 +353,9 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
     // alto, donde el viewport cubre una porción chica del trazo.
     this.map.on('moveend', this.redrawTrailArrows);
     this.renderUnits();
+    // La señal de inactividad puede cruzar el umbral mientras el mapa sigue
+    // abierto; actualizar el anillo sin esperar a que llegue otra posición.
+    this.stationaryRefreshInterval = window.setInterval(() => this.renderUnits(), 60_000);
     this.renderTrail();
     this.renderEvents();
     const selectedUnit = this.state.selectedUnit();
@@ -410,8 +425,28 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
   private renderUnits(): void {
     if (!this.markersLayer) return;
     this.markersLayer.clearLayers();
+    this.stationaryLayer?.clearLayers();
     for (const unit of this.units) {
+      if (isUnitStationaryOverThreshold(unit)) {
+        L.circle(unit.position, {
+          radius: STATIONARY_ALERT_RADIUS_METERS,
+          color: '#c62828',
+          weight: 2,
+          opacity: 0.9,
+          dashArray: '7 8',
+          lineCap: 'round',
+          fillColor: '#ef5350',
+          fillOpacity: 0.09,
+          interactive: true,
+        })
+          .on('click', () => this.state.selectUnit(unit))
+          .addTo(this.stationaryLayer!);
+      }
       L.marker(unit.position, { icon: createUnitIcon(unit) })
+        .bindTooltip(`Última ubicación: ${unit.position[0].toFixed(6)}, ${unit.position[1].toFixed(6)}`, {
+          direction: 'top',
+          offset: [0, -60],
+        })
         .on('click', () => this.state.selectUnit(unit))
         .addTo(this.markersLayer);
     }
@@ -515,6 +550,7 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.stationaryRefreshInterval !== undefined) window.clearInterval(this.stationaryRefreshInterval);
     this.map?.remove();
   }
 }

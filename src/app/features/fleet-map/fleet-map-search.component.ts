@@ -9,7 +9,7 @@ import {
   type IconName,
 } from '@iamacalupuenzo-ui/comsatel-ds';
 import type { FleetUnit, FleetUnitType } from '../../core/fleet/fleet-telemetry.service';
-import { FleetMapService, type FleetMapStatusFilter, type FleetMapTypeFilter } from './fleet-map.service';
+import { FleetMapService, type FleetMapFinancieraFilter, type FleetMapStatusFilter } from './fleet-map.service';
 
 // El filtro es de estado de señal GPS (no de ruta/movimiento): "En ruta" se
 // renombró a "Con señal" para no confundirlo con el estado de encendido.
@@ -18,12 +18,15 @@ const STATUS_OPTIONS: readonly { value: FleetMapStatusFilter; label: string }[] 
   { value: 'route', label: 'Con señal' },
   { value: 'offline', label: 'Sin señal' },
 ];
-const TYPE_OPTIONS: readonly { value: FleetMapTypeFilter; label: string }[] = [
-  { value: 'all', label: 'Todas las unidades' },
-  { value: 'car', label: 'Auto' },
-  { value: 'truck', label: 'Camión' },
-  { value: 'bus', label: 'Bus' },
-  { value: 'motorcycle', label: 'Moto' },
+/**
+ * Reemplaza al filtro de tipo de unidad (Auto/Camión/Bus/Moto) — a pedido
+ * de Enzo (23 sep. 2026): junto con Estado, la financiera (aseguradora
+ * dueña de la unidad) es uno de los dos filtros que realmente importan acá.
+ */
+const FINANCIERA_OPTIONS: readonly { value: FleetMapFinancieraFilter; label: string }[] = [
+  { value: 'all', label: 'Todas las financieras' },
+  { value: 'Santander', label: 'Santander' },
+  { value: 'Mapfre', label: 'Mapfre' },
 ];
 const TYPE_ICONS: Record<FleetUnitType, IconName> = { car: 'car', truck: 'truck', bus: 'bus', motorcycle: 'bike' };
 
@@ -44,11 +47,11 @@ const TYPE_ICONS: Record<FleetUnitType, IconName> = { car: 'car', truck: 'truck'
 
         <div class="monitor__filters" aria-label="Filtros de unidades">
           <button #statusTrigger type="button" class="filter-control" [class.is-active]="state.status() !== 'all'" [attr.aria-expanded]="openFilter() === 'status'" (click)="toggleFilter('status')"><cs-icon name="tag" [size]="14" aria-hidden="true" /><span>{{ statusLabel() }}</span><cs-icon name="chevron-down" [size]="12" class="filter-control__chevron" aria-hidden="true" /></button>
-          <button #typeTrigger type="button" class="filter-control" [class.is-active]="state.type() !== 'all'" [attr.aria-expanded]="openFilter() === 'type'" (click)="toggleFilter('type')"><cs-icon name="sliders" [size]="14" aria-hidden="true" /><span>{{ typeLabel() }}</span><cs-icon name="chevron-down" [size]="12" class="filter-control__chevron" aria-hidden="true" /></button>
+          <button #financieraTrigger type="button" class="filter-control" [class.is-active]="state.financiera() !== 'all'" [attr.aria-expanded]="openFilter() === 'financiera'" (click)="toggleFilter('financiera')"><cs-icon name="sliders" [size]="14" aria-hidden="true" /><span>{{ financieraLabel() }}</span><cs-icon name="chevron-down" [size]="12" class="filter-control__chevron" aria-hidden="true" /></button>
         </div>
 
         <cs-popover [isOpen]="openFilter() === 'status'" [triggerRef]="statusTrigger" placement="bottom-start" [offset]="4" role="listbox" ariaLabel="Filtrar por estado" (closed)="openFilter.set(null)"><div class="filter-menu">@for (option of statusOptions; track option.value) { <button type="button" role="option" [attr.aria-selected]="state.status() === option.value" [class.is-selected]="state.status() === option.value" (click)="setStatus(option.value)"><span class="filter-menu__label">{{ option.label }}</span>@if (state.status() === option.value) { <cs-icon name="check" [size]="16" class="filter-menu__check" aria-hidden="true" /> }</button> }</div></cs-popover>
-        <cs-popover [isOpen]="openFilter() === 'type'" [triggerRef]="typeTrigger" placement="bottom-start" [offset]="4" role="listbox" ariaLabel="Filtrar por tipo de unidad" (closed)="openFilter.set(null)"><div class="filter-menu">@for (option of typeOptions; track option.value) { <button type="button" role="option" [attr.aria-selected]="state.type() === option.value" [class.is-selected]="state.type() === option.value" (click)="setType(option.value)"><span class="filter-menu__label">{{ option.label }}</span>@if (state.type() === option.value) { <cs-icon name="check" [size]="16" class="filter-menu__check" aria-hidden="true" /> }</button> }</div></cs-popover>
+        <cs-popover [isOpen]="openFilter() === 'financiera'" [triggerRef]="financieraTrigger" placement="bottom-start" [offset]="4" role="listbox" ariaLabel="Filtrar por financiera" (closed)="openFilter.set(null)"><div class="filter-menu">@for (option of financieraOptions; track option.value) { <button type="button" role="option" [attr.aria-selected]="state.financiera() === option.value" [class.is-selected]="state.financiera() === option.value" (click)="setFinanciera(option.value)"><span class="filter-menu__label">{{ option.label }}</span>@if (state.financiera() === option.value) { <cs-icon name="check" [size]="16" class="filter-menu__check" aria-hidden="true" /> }</button> }</div></cs-popover>
 
         <div #resultsList class="monitor__results" role="list" aria-label="Unidades encontradas" (scroll)="checkScroll()">
           @if (state.pinnedFilteredUnits().length) {
@@ -113,11 +116,11 @@ export class FleetMapSearchComponent implements AfterViewInit {
 
   protected readonly state = inject(FleetMapService);
   protected readonly isOpen = signal(true);
-  protected readonly openFilter = signal<'status' | 'type' | null>(null);
+  protected readonly openFilter = signal<'status' | 'financiera' | null>(null);
   protected readonly statusOptions = STATUS_OPTIONS;
-  protected readonly typeOptions = TYPE_OPTIONS;
+  protected readonly financieraOptions = FINANCIERA_OPTIONS;
   protected readonly statusLabel = computed(() => STATUS_OPTIONS.find((option) => option.value === this.state.status())?.label ?? 'Estado');
-  protected readonly typeLabel = computed(() => TYPE_OPTIONS.find((option) => option.value === this.state.type())?.label ?? 'Tipo');
+  protected readonly financieraLabel = computed(() => FINANCIERA_OPTIONS.find((option) => option.value === this.state.financiera())?.label ?? 'Financiera');
   // Sin barra de scroll visible (patrón de C-Locater, FloatingMonitor.tsx):
   // este chevron animado es la única señal de que hay más unidades debajo.
   protected readonly showScrollHint = signal(false);
@@ -151,9 +154,9 @@ export class FleetMapSearchComponent implements AfterViewInit {
     setTimeout(() => this.searchInputRef?.nativeElement.querySelector('input')?.focus());
     setTimeout(() => this.checkScroll(), 320);
   }
-  protected toggleFilter(filter: 'status' | 'type'): void { this.openFilter.update((open) => open === filter ? null : filter); }
+  protected toggleFilter(filter: 'status' | 'financiera'): void { this.openFilter.update((open) => open === filter ? null : filter); }
   protected setStatus(value: FleetMapStatusFilter): void { this.state.setStatus(value); this.openFilter.set(null); }
-  protected setType(value: FleetMapTypeFilter): void { this.state.setType(value); this.openFilter.set(null); }
+  protected setFinanciera(value: FleetMapFinancieraFilter): void { this.state.setFinanciera(value); this.openFilter.set(null); }
   protected typeIcon(unit: FleetUnit): IconName { return TYPE_ICONS[unit.type]; }
   // Mismo formateador que fleet-telemetry.service.ts usa para "Última actualización".
   protected formattedDate(unit: FleetUnit): string {
@@ -176,6 +179,11 @@ export class FleetMapSearchComponent implements AfterViewInit {
         ? { label: 'Desfijar', value: 'unpin', icon: 'star' }
         : { label: 'Fijar', value: 'pin', icon: 'star' },
       { label: 'Ver bitácora', value: 'bitacora', icon: 'file-text' },
+      // Distinto de Bitácora (que trae posiciones, eventos y datos de
+      // orden): esto solo centra el mapa en la unidad, en su propia
+      // pestaña, para quien únicamente quiere ver cómo se mueve — a pedido
+      // de Enzo (23 sep. 2026).
+      { label: 'Seguir unidad', value: 'follow', icon: 'eye' },
       { label: 'Centrar en mapa', value: 'center', icon: 'locate-fixed' },
       { label: 'Copiar ubicación', value: 'copy', icon: 'copy' },
     ];
@@ -184,6 +192,7 @@ export class FleetMapSearchComponent implements AfterViewInit {
     this.closeActionMenu();
     if (item.value === 'pin' || item.value === 'unpin') this.state.togglePin(unit.id);
     if (item.value === 'bitacora') this.state.openBitacora(unit);
+    if (item.value === 'follow') this.state.openFollow(unit);
     if (item.value === 'center') this.state.selectUnit(unit);
     if (item.value === 'copy') void this.state.copyUnitLocation(unit);
   }

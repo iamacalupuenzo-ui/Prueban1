@@ -72,6 +72,54 @@ template/estilos a archivos aparte para lograrlo.
   puntual?, ¿qué fila tiene el menú de acciones abierto?) se queda local en
   ese componente — no se sube al service "por las dudas".
 
+## Service de pantalla vs. service de transiciones {#service-de-pantalla-vs-transiciones}
+
+Regla mecánica, sin criterio de tamaño de por medio — aplica desde el primer
+día de una pantalla, no cuando "ya se sintió grande":
+
+- **`<feature>.service.ts` (service de pantalla) nunca llama directo a un
+  método que muta datos** del service de datos (`core/<dominio>/mock-*.service.ts`)
+  — nada de `create`, `update`, `close`, `annul`, `createBulk`, etc. Sí puede
+  leer libremente (`orders()`, `fixturesLoading`, `loadFixtureOrders()`,
+  `hasActiveXOrder()`): las lecturas no son el problema, las mutaciones con
+  su validación de negocio sí.
+- **Toda mutación y su validación de negocio vive en
+  `<feature>-transitions.service.ts`** — un service `@Injectable({providedIn:'root'})`
+  nuevo, sin signals propios (o casi ninguno): recibe datos por parámetro,
+  llama al service de datos, devuelve el resultado tal cual (`{kind:'success'|...}`).
+  No conoce diálogos, ni toasts, ni qué está abierto en pantalla.
+- **El service de pantalla sigue siendo el único punto de inyección para los
+  componentes hijos** — toolbar, tabla, drawer y diálogos jamás inyectan el
+  service de transiciones directamente. El de pantalla lo inyecta a él
+  (dependencia en una sola dirección, nunca al revés) y sus métodos existentes
+  (`confirmClose()`, `register()`, etc.) pasan a ser un wrapper: llaman al de
+  transiciones, y con el resultado actualizan sus propios signals (toast,
+  cerrar diálogo, refrescar selección). Esto significa que **ningún componente
+  cambia sus imports ni sus bindings de template** cuando se hace esta
+  división — es un cambio interno del service de pantalla.
+- Ejecutado en `capture-orders.service.ts` → `capture-orders-transitions.service.ts`
+  (se llevó la carga masiva completa: lectura/detección de formato,
+  validación por chunks contra SAP/flota, y la confirmación final) y en
+  `recoveries.service.ts` → `recoveries-transitions.service.ts` (registrar,
+  avanzar a gestión, marcar recuperado, cerrar, anular). Usar esos dos pares
+  de archivos como plantilla exacta para la próxima pantalla con mutaciones
+  (`fleet-map.service.ts` el día que las tenga).
+
+### Por qué existe esta regla
+
+No es una regla de "el archivo se puso grande" — es la que evita que vuelva
+a pasar. `new-capture-order.page.ts` se dividió una vez (ver
+`docs/arquitectura-new-capture-order.md`) y el service resultante
+(`capture-orders.service.ts`) igual volvió a crecer a 1374 líneas cuando se
+agregó la carga masiva real, porque la única regla que existía entonces
+("un service por feature") no decía *qué* va dentro de ese service. Esta
+regla sí lo dice: filtros/orden/paginación/helpers de lectura/toast/qué
+diálogo está abierto van en el de pantalla; todo lo que llama a
+`create`/`update`/`close`/`annul`/`createBulk` va en el de transiciones. Es
+la instrucción que cualquier agente — humano o modelo — debe seguir *antes*
+de escribir la primera línea de una pantalla nueva con mutaciones, no algo
+que se descubre después de que el archivo ya es ilegible.
+
 ## Diálogos
 
 - Un componente por diálogo/modal, bajo `dialogs/`.
@@ -88,6 +136,10 @@ template/estilos a archivos aparte para lograrlo.
 - [ ] ¿El estado compartido vive en el service, no repetido en cada componente?
 - [ ] ¿Template y estilos siguen inline en el `.ts` (no `.html`/`.css` sueltos)?
 - [ ] ¿Cada diálogo es su propio componente en `dialogs/`?
+- [ ] ¿El service de pantalla (`<feature>.service.ts`) tiene cero llamadas
+      directas a métodos que mutan datos del service de datos — todas esas
+      llamadas están en `<feature>-transitions.service.ts`? (ver
+      [Service de pantalla vs. service de transiciones](#service-de-pantalla-vs-transiciones))
 - [ ] ¿Compila (`npx tsc --noEmit` y/o `ng build`) sin errores?
 
 Para el detalle completo (por qué cada decisión, qué se descartó y por qué),

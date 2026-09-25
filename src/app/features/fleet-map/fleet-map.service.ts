@@ -1,13 +1,24 @@
 import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { AppLayoutState } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
+  financieraFor,
   FleetTelemetryService,
   type FleetUnit,
-  type FleetUnitType,
 } from '../../core/fleet/fleet-telemetry.service';
+import type { CaptureFinanciera } from '../../core/orders/mock-capture-orders.service';
 
 export type FleetMapStatusFilter = 'all' | 'route' | 'offline';
-export type FleetMapTypeFilter = 'all' | FleetUnitType;
+export type FleetMapFinancieraFilter = 'all' | CaptureFinanciera;
+/**
+ * Pestaña activa: 'map' o una unidad abierta en Bitácora o en Seguimiento
+ * ("Seguir unidad"). Prefijadas porque la misma unidad puede tener las dos
+ * pestañas abiertas a la vez — Bitácora (historial completo) y Seguimiento
+ * (solo el mapa centrado en ella, sin el resto de información) son vistas
+ * independientes, no una reemplaza a la otra. Ver la aclaración de Enzo
+ * (23 sep. 2026): "el problema con ver bitácora es que me arroja mucha
+ * información que no necesito... simplemente seguir, seguir unidad".
+ */
+export type FleetMapTabKey = 'map' | `bitacora:${string}` | `follow:${string}`;
 
 /**
  * Estado compartido de la vista de mapa. Centraliza la búsqueda, los filtros
@@ -21,7 +32,7 @@ export class FleetMapService {
 
   readonly query = signal('');
   readonly status = signal<FleetMapStatusFilter>('all');
-  readonly type = signal<FleetMapTypeFilter>('all');
+  readonly financiera = signal<FleetMapFinancieraFilter>('all');
   readonly selectedUnitId = signal<string | null>(null);
   /** UI local, no persiste entre sesiones — "Fijar" desde el menú de la card. */
   readonly pinnedUnitIds = signal<ReadonlySet<string>>(new Set());
@@ -30,14 +41,14 @@ export class FleetMapService {
   readonly filteredUnits = computed(() => {
     const query = this.query().trim().toLocaleLowerCase();
     const status = this.status();
-    const type = this.type();
+    const financiera = this.financiera();
     const pinned = this.pinnedUnitIds();
 
     const matches = this.units().filter((unit) => {
       const matchesQuery = !query || `${unit.name} ${unit.vehicleCode} ${unit.id}`.toLocaleLowerCase().includes(query);
       const matchesStatus = status === 'all' || (status === 'route' ? unit.status === 'En ruta' : unit.status === 'Sin señal');
-      const matchesType = type === 'all' || unit.type === type;
-      return matchesQuery && matchesStatus && matchesType;
+      const matchesFinanciera = financiera === 'all' || financieraFor(unit) === financiera;
+      return matchesQuery && matchesStatus && matchesFinanciera;
     });
     if (!pinned.size) return matches;
     // Las unidades fijadas suben al inicio de la lista, conservando el orden
@@ -71,8 +82,8 @@ export class FleetMapService {
     this.status.set(value);
   }
 
-  setType(value: FleetMapTypeFilter): void {
-    this.type.set(value);
+  setFinanciera(value: FleetMapFinancieraFilter): void {
+    this.financiera.set(value);
   }
 
   selectUnit(unit: FleetUnit): void {
@@ -86,7 +97,7 @@ export class FleetMapService {
   clearFilters(): void {
     this.query.set('');
     this.status.set('all');
-    this.type.set('all');
+    this.financiera.set('all');
   }
 
   isPinned(unitId: string): boolean {
@@ -103,13 +114,15 @@ export class FleetMapService {
   }
 
   // ---------------------------------------------------------------------
-  // Pestañas: Mapa (fija, siempre presente) + una por cada Bitácora abierta.
-  // Vive acá (no en una ruta Angular) porque el sistema de pestañas queda
-  // acotado a Explorar/Mapa, no es global a la app — ver
+  // Pestañas: Mapa (fija, siempre presente) + una por cada Bitácora o
+  // Seguimiento abiertos. Vive acá (no en una ruta Angular) porque el
+  // sistema de pestañas queda acotado a Explorar/Mapa, no es global a la
+  // app — ver
   // `docs/epica-a-plan-desarrollo-fleet-operations-bitacora-v1-2026-09-21.md`.
   // ---------------------------------------------------------------------
   readonly openBitacoraUnitIds = signal<string[]>([]);
-  readonly activeTab = signal<'map' | string>('map');
+  readonly openFollowUnitIds = signal<string[]>([]);
+  readonly activeTab = signal<FleetMapTabKey>('map');
 
   /**
    * Bitácora necesita el ancho completo — al abrirla se colapsa el sidebar
@@ -140,9 +153,24 @@ export class FleetMapService {
       .map((id) => units.find((unit) => unit.id === id))
       .filter((unit): unit is FleetUnit => !!unit);
   });
+  readonly openFollowUnits = computed(() => {
+    const units = this.units();
+    return this.openFollowUnitIds()
+      .map((id) => units.find((unit) => unit.id === id))
+      .filter((unit): unit is FleetUnit => !!unit);
+  });
   readonly bitacoraUnit = computed(() => {
     const activeTab = this.activeTab();
-    return activeTab === 'map' ? null : this.units().find((unit) => unit.id === activeTab) ?? null;
+    if (!activeTab.startsWith('bitacora:')) return null;
+    const unitId = activeTab.slice('bitacora:'.length);
+    return this.units().find((unit) => unit.id === unitId) ?? null;
+  });
+  /** Unidad de la pestaña "Seguir unidad" activa — mapa a pantalla completa sin el resto de Bitácora, ver `follow-unit-view.component.ts`. */
+  readonly followUnit = computed(() => {
+    const activeTab = this.activeTab();
+    if (!activeTab.startsWith('follow:')) return null;
+    const unitId = activeTab.slice('follow:'.length);
+    return this.units().find((unit) => unit.id === unitId) ?? null;
   });
 
   /** Abre la bitácora en una pestaña nueva, o cambia a la ya abierta si existe. */
@@ -150,11 +178,24 @@ export class FleetMapService {
     if (!this.openBitacoraUnitIds().includes(unit.id)) {
       this.openBitacoraUnitIds.update((ids) => [...ids, unit.id]);
     }
-    this.activeTab.set(unit.id);
+    this.activeTab.set(`bitacora:${unit.id}`);
     this.selectUnit(unit);
   }
 
-  switchTab(tab: 'map' | string): void {
+  /**
+   * Abre "Seguir unidad" en una pestaña nueva, o cambia a la ya abierta si
+   * existe — el mismo patrón de `openBitacora`, pero para la vista liviana
+   * de seguimiento (solo mapa, sin posiciones/eventos/orden).
+   */
+  openFollow(unit: FleetUnit): void {
+    if (!this.openFollowUnitIds().includes(unit.id)) {
+      this.openFollowUnitIds.update((ids) => [...ids, unit.id]);
+    }
+    this.activeTab.set(`follow:${unit.id}`);
+    this.selectUnit(unit);
+  }
+
+  switchTab(tab: FleetMapTabKey): void {
     this.activeTab.set(tab);
   }
 
@@ -167,13 +208,28 @@ export class FleetMapService {
     const nextIds = ids.filter((id) => id !== unitId);
     this.openBitacoraUnitIds.set(nextIds);
 
-    if (this.activeTab() === unitId) {
+    if (this.activeTab() === `bitacora:${unitId}`) {
       const fallbackId = nextIds[closingIndex - 1] ?? nextIds[0];
-      this.activeTab.set(fallbackId ?? 'map');
+      this.activeTab.set(fallbackId ? `bitacora:${fallbackId}` : 'map');
     }
   }
 
-  /** Vuelve a Mapa sin cerrar las bitácoras abiertas — quedan disponibles como pestañas. */
+  /** Cierra una pestaña de seguimiento; si estaba activa, cae a la pestaña previa o a Mapa. */
+  closeFollowTab(unitId: string): void {
+    const ids = this.openFollowUnitIds();
+    const closingIndex = ids.indexOf(unitId);
+    if (closingIndex === -1) return;
+
+    const nextIds = ids.filter((id) => id !== unitId);
+    this.openFollowUnitIds.set(nextIds);
+
+    if (this.activeTab() === `follow:${unitId}`) {
+      const fallbackId = nextIds[closingIndex - 1] ?? nextIds[0];
+      this.activeTab.set(fallbackId ? `follow:${fallbackId}` : 'map');
+    }
+  }
+
+  /** Vuelve a Mapa sin cerrar las bitácoras/seguimientos abiertos — quedan disponibles como pestañas. */
   closeBitacora(): void {
     this.activeTab.set('map');
   }
@@ -202,11 +258,14 @@ export class FleetMapService {
   async copyUnitLocation(unit: FleetUnit): Promise<void> {
     const [lat, lng] = unit.position;
     const coordinates = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    if (!(await this.copyText(coordinates))) {
-      this.showMessage('error', 'No pudimos copiar la ubicación. Cópiala manualmente.');
+    const mapsUrl = new URL('https://www.google.com/maps/search/');
+    mapsUrl.searchParams.set('api', '1');
+    mapsUrl.searchParams.set('query', coordinates);
+    if (!(await this.copyText(mapsUrl.toString()))) {
+      this.showMessage('error', 'No pudimos copiar el enlace de Google Maps. Inténtalo nuevamente.');
       return;
     }
-    this.showMessage('success', `Ubicación de ${unit.name} copiada (${coordinates}).`, 2000);
+    this.showMessage('success', `Enlace de Google Maps de la placa ${unit.name} copiado.`, 2000);
   }
 
   private async copyText(value: string): Promise<boolean> {

@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { CAPTURE_FINANCIERAS, type CaptureFinanciera } from '../orders/mock-capture-orders.service';
 
 export type TelemetryState = 'loading' | 'empty' | 'ready' | 'error' | 'forbidden';
 export type FleetUnitType = 'car' | 'truck' | 'bus' | 'motorcycle';
@@ -13,7 +14,15 @@ export interface FleetUnit {
   ignition: 'on' | 'off';
   /** ISO 8601. El buscador del mapa lo formatea con `Intl.DateTimeFormat('es-PE')`. */
   lastUpdate: string;
+  /** Último movimiento confirmado por telemetría. `null` cuando la unidad sigue en movimiento o no hay dato fiable. */
+  stationarySince?: string | null;
   position: [number, number];
+}
+
+export function isUnitStationaryOverThreshold(unit: FleetUnit, now = Date.now()): boolean {
+  if (unit.status === 'Sin señal' || !unit.stationarySince) return false;
+  const stationarySince = new Date(unit.stationarySince).getTime();
+  return Number.isFinite(stationarySince) && now - stationarySince >= 60 * 60 * 1000;
 }
 
 /**
@@ -42,6 +51,20 @@ export interface FleetPositionEntry {
   label: string;
   position: [number, number];
   isLatest?: boolean;
+}
+
+/**
+ * Aseguradora de la unidad — fuente independiente de `deviceInfoFor` (dato
+ * de flota, no de contrato de captura); misma técnica determinística que
+ * `sapContractStatusFor` en `mock-capture-orders.service.ts`, así que la
+ * misma unidad siempre resuelve a la misma financiera. Habilita el filtro
+ * "Financiera" del buscador del mapa — a pedido de Enzo (23 sep. 2026), que
+ * reemplaza al filtro de tipo de unidad.
+ */
+export function financieraFor(unit: FleetUnit): CaptureFinanciera {
+  let seed = 0;
+  for (let i = 0; i < unit.vehicleCode.length; i++) seed = (seed * 31 + unit.vehicleCode.charCodeAt(i)) >>> 0;
+  return CAPTURE_FINANCIERAS[seed % CAPTURE_FINANCIERAS.length];
 }
 
 const DEMO_GROUPS = ['Banco Pichincha — Flota Sur', 'Distribuidora Andina', 'Logística Costa Verde', 'Transportes Rápidos del Sur SAC'];
@@ -81,6 +104,11 @@ const DEMO_DISTRICTS = [
   'Miraflores', 'San Isidro', 'Surquillo', 'Breña', 'Jesús María',
   'San Miguel', 'Pueblo Libre', 'Lince', 'Magdalena', 'Barranco',
 ];
+
+/** Demo de inactividad: algunos vehículos llevan detenidos entre 75 min y 4 h para mostrar la alerta en el mapa. */
+function demoStationarySince(hoursAgo: number): string {
+  return new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
+}
 
 /** Dirección de ejemplo — mismo criterio que `deviceInfoFor`: demo determinística, no geocodificación real. */
 function demoAddress(seed: number, index: number): string {
@@ -132,15 +160,15 @@ export function positionHistoryFor(
 // Unidades repartidas en distintas ciudades del Perú (no solo Lima) para que
 // la lista del buscador del mapa obligue a hacer scroll con datos realistas.
 const MOCK_UNITS: FleetUnit[] = [
-  { id: 'VHC-3001', name: 'Vehículo 01', vehicleCode: 'MTR-3001', type: 'car', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:14:00', position: [-12.0464, -77.0428] },
-  { id: 'TRK-3002', name: 'Vehículo 02', vehicleCode: 'MTR-3002', type: 'truck', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T09:58:00', position: [-12.0301, -77.0212] },
+  { id: 'VHC-3001', name: 'Vehículo 01', vehicleCode: 'MTR-3001', type: 'car', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:14:00', stationarySince: demoStationarySince(1.4), position: [-12.0464, -77.0428] },
+  { id: 'TRK-3002', name: 'Vehículo 02', vehicleCode: 'MTR-3002', type: 'truck', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T09:58:00', stationarySince: demoStationarySince(1.8), position: [-12.0301, -77.0212] },
   { id: 'VAN-3003', name: 'Vehículo 03', vehicleCode: 'MTR-3003', type: 'car', status: 'Sin señal', ignition: 'off', lastUpdate: '2026-09-20T08:40:00', position: [-12.0891, -77.0165] },
   { id: 'BUS-3004', name: 'Vehículo 04', vehicleCode: 'MTR-3004', type: 'bus', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:21:00', position: [-12.0654, -77.0842] },
   { id: 'MOT-3005', name: 'Vehículo 05', vehicleCode: 'MTR-3005', type: 'motorcycle', status: 'Sin señal', ignition: 'off', lastUpdate: '2026-09-20T07:55:00', position: [-12.1021, -76.9932] },
   { id: 'VHC-3006', name: 'Vehículo 06', vehicleCode: 'MTR-3006', type: 'car', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:05:00', position: [-16.4090, -71.5375] },
   { id: 'TRK-3007', name: 'Vehículo 07', vehicleCode: 'MTR-3007', type: 'truck', status: 'Sin señal', ignition: 'off', lastUpdate: '2026-09-20T06:32:00', position: [-16.3989, -71.5350] },
   { id: 'VHC-3008', name: 'Vehículo 08', vehicleCode: 'MTR-3008', type: 'car', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T09:41:00', position: [-8.1116, -79.0288] },
-  { id: 'BUS-3009', name: 'Vehículo 09', vehicleCode: 'MTR-3009', type: 'bus', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:02:00', position: [-8.1197, -79.0398] },
+  { id: 'BUS-3009', name: 'Vehículo 09', vehicleCode: 'MTR-3009', type: 'bus', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:02:00', stationarySince: demoStationarySince(2.2), position: [-8.1197, -79.0398] },
   { id: 'MOT-3010', name: 'Vehículo 10', vehicleCode: 'MTR-3010', type: 'motorcycle', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T09:18:00', position: [-6.7714, -79.8409] },
   { id: 'TRK-3011', name: 'Vehículo 11', vehicleCode: 'MTR-3011', type: 'truck', status: 'Sin señal', ignition: 'off', lastUpdate: '2026-09-20T05:47:00', position: [-6.7642, -79.8489] },
   { id: 'VHC-3012', name: 'Vehículo 12', vehicleCode: 'MTR-3012', type: 'car', status: 'En ruta', ignition: 'on', lastUpdate: '2026-09-20T10:11:00', position: [-13.5320, -71.9675] },

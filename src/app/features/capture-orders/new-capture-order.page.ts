@@ -8,8 +8,11 @@ import { CaptureOrderAnnulDialogComponent } from './dialogs/capture-order-annul-
 import { CaptureOrderBulkHistoryDialogComponent } from './dialogs/capture-order-bulk-history-dialog.component';
 import { CaptureOrderBulkUploadDialogComponent } from './dialogs/capture-order-bulk-upload-dialog.component';
 import { CaptureOrderCloseDialogComponent } from './dialogs/capture-order-close-dialog.component';
+import { CaptureOrderEditCaptureDialogComponent } from './dialogs/capture-order-edit-capture-dialog.component';
+import { CaptureOrderEditObservationDialogComponent } from './dialogs/capture-order-edit-observation-dialog.component';
 import { CaptureOrderFormDialogComponent } from './dialogs/capture-order-form-dialog.component';
 import { CaptureOrderObservationDialogComponent } from './dialogs/capture-order-observation-dialog.component';
+import { CaptureOrderRevertDialogComponent } from './dialogs/capture-order-revert-dialog.component';
 
 /**
  * Shell de la pantalla de Capturas. Orquesta el layout de la matriz,
@@ -29,8 +32,11 @@ import { CaptureOrderObservationDialogComponent } from './dialogs/capture-order-
     CaptureOrderBulkUploadDialogComponent,
     CaptureOrderCloseDialogComponent,
     CaptureOrderDetailDrawerComponent,
+    CaptureOrderEditCaptureDialogComponent,
+    CaptureOrderEditObservationDialogComponent,
     // CaptureOrderFormDialogComponent, — registro/edición individual fuera de alcance, ver docs/arquitectura-new-capture-order.md#capturas-sin-registro-individual.
     CaptureOrderObservationDialogComponent,
+    CaptureOrderRevertDialogComponent,
     CaptureOrderTableComponent,
     CaptureOrderToolbarComponent,
     Icon,
@@ -105,6 +111,9 @@ import { CaptureOrderObservationDialogComponent } from './dialogs/capture-order-
       <app-capture-order-detail-drawer />
       <app-capture-order-annul-dialog />
       <app-capture-order-observation-dialog />
+      <app-capture-order-revert-dialog />
+      <app-capture-order-edit-capture-dialog />
+      <app-capture-order-edit-observation-dialog />
     </main>
   `,
   styles: [

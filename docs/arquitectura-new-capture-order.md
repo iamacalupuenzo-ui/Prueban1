@@ -1,3 +1,57 @@
+## Segundo refactor — service de transiciones {#service-de-transiciones}
+
+Fecha: 22 de septiembre de 2026.
+Estado: implementado.
+
+**Problema:** el primer refactor de esta página (ver más abajo, "Refactor de
+arquitectura") bajó `new-capture-order.page.ts` de 2700 a 230 líneas, pero
+concentró todo el estado y toda la lógica de negocio en un solo
+`capture-orders.service.ts`. Esa regla ("un service por feature") no decía
+*qué* debía vivir dentro de ese service, así que volvió a crecer: llegó a
+1374 líneas cuando se agregó la carga masiva real con SheetJS (detección de
+formato, validación por chunks contra SAP/flota, reconciliación) en la misma
+sesión en que se implementó la Bitácora del viaje. Mismo problema en
+`recoveries.service.ts` (907 líneas), aunque sin un bloque tan dominante
+como el de carga masiva.
+
+**Decisión:** dividir cada service de pantalla en dos, con una regla
+mecánica (no de tamaño): `<feature>.service.ts` nunca llama directo a un
+método que muta datos del service de datos (`create`/`update`/`close`/
+`annul`/`createBulk`/etc.) — esas llamadas y su validación de negocio se
+mueven a `<feature>-transitions.service.ts`, un service nuevo sin signals
+propios que recibe datos por parámetro y devuelve el resultado tal cual. El
+service de pantalla lo inyecta (una sola dirección) y sigue siendo el único
+punto de inyección para los componentes hijos — ningún componente cambió sus
+imports ni sus bindings de template. El detalle completo de la regla y por
+qué existe está en
+`docs/lineamientos-estructura-componentes.md#service-de-pantalla-vs-transiciones`,
+que es la referencia accionable para la próxima pantalla con mutaciones —
+este párrafo es solo el registro de la decisión y su motivo.
+
+**Ejecutado:**
+
+- `capture-orders.service.ts` (1374 → 1210 líneas) delega a
+  `capture-orders-transitions.service.ts` (257 líneas nuevas): registrar/
+  editar, cerrar, revertir a pendiente, observar, paralizar, marcar
+  documento, y la carga masiva completa (lectura/detección de formato,
+  validación por chunks, reconciliación de conflictos, confirmación final).
+  Esta última es el bloque que más pesaba (~250 líneas) y el que motivó la
+  división en esta sesión.
+- `recoveries.service.ts` (907 → 893 líneas) delega a
+  `recoveries-transitions.service.ts` (52 líneas nuevas): registrar/editar,
+  avanzar a gestión, marcar recuperado, cerrar, anular. La reducción es
+  menor porque Recuperos no tiene carga masiva — se ejecutó igual, por
+  consistencia de patrón entre ambas pantallas, no por tamaño.
+
+**No verificado con `tsc`/`ng build`/`ng test`** — por acuerdo vigente con
+Enzo (él corre esas verificaciones). Se revisó a mano que ningún componente
+externo importe símbolos removidos de los dos services de pantalla (`grep`
+confirmó que solo `CaptureOrdersService`/`RecoveriesService` y el tipo
+`DraftField` se importan desde afuera de cada carpeta de feature) y que las
+llamadas `this.api.*` que quedaron en cada service de pantalla son de solo
+lectura. Pendiente: verificación visual en navegador de carga masiva
+(Capturas) y de las transiciones de ciclo de vida (Recuperos).
+
 ## Capturas sin registro individual {#capturas-sin-registro-individual}
 
 Fecha: 21 de septiembre de 2026.

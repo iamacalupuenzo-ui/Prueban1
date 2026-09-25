@@ -3,61 +3,59 @@ import { Input, Modal } from '@iamacalupuenzo-ui/comsatel-ds';
 import { CaptureOrdersService } from '../capture-orders.service';
 
 /**
- * Diálogo para marcar una captura como Capturado. Pide responsable y
- * ubicación de la captura física — a pedido de Enzo (23 sep. 2026), mismo
- * patrón de validación que "Observar captura"/"Paralizar captura".
+ * Corrige responsable/ubicación de una captura ya marcada como Capturado —
+ * el lápiz junto a esos datos en el drawer de detalle. No repite la
+ * transición de estado (`capture-order-close-dialog.component.ts`), solo
+ * actualiza el par de campos. A pedido de Enzo (23 sep. 2026).
  */
 @Component({
-  selector: 'app-capture-order-close-dialog',
+  selector: 'app-capture-order-edit-capture-dialog',
   imports: [Input, Modal],
   template: `
     <cs-modal
       class="capture-surface-modal"
-      [isOpen]="state.closeOpen()"
-      title="Marcar como capturado"
+      [isOpen]="state.editCaptureDetailsOpen()"
+      title="Editar datos de la captura"
       width="md"
-      [primaryAction]="state.closePrimaryAction()"
-      [secondaryAction]="secondaryAction"
-      (primaryActionClick)="state.confirmClose()"
-      (secondaryActionClick)="state.closeCloseConfirmation()"
-      (closed)="state.closeCloseConfirmation()"
+      [primaryAction]="state.editCaptureDetailsPrimaryAction()"
+      [secondaryAction]="state.editCaptureDetailsSecondaryAction"
+      (primaryActionClick)="state.confirmEditCaptureDetails()"
+      (secondaryActionClick)="state.closeEditCaptureDetails()"
+      (closed)="state.closeEditCaptureDetails()"
     >
-      @if (state.closingOrder(); as order) {
+      @if (state.editingCaptureDetailsOrder(); as order) {
         <div class="dialog-content dialog-content--reason">
           <div class="dialog-copy">
-            <p>
-              Marcarás la orden {{ order.id }} como Capturado. Esta acción quedará registrada en
-              el historial.
-            </p>
+            <p>Corrige el responsable o la ubicación registrados para la orden {{ order.id }}.</p>
           </div>
           <div class="form-field">
-            <label for="close-officer">Responsable de la captura</label
+            <label for="edit-capture-officer">Responsable de la captura</label
             ><cs-input
-              id="close-officer"
+              id="edit-capture-officer"
               fieldSize="md"
               placeholder="Nombre del oficial a cargo"
-              [value]="state.closeOfficer()"
-              (valueChange)="state.setCloseOfficer($event)"
-              [invalid]="state.closeOfficerError() !== ''"
+              [value]="state.editCaptureOfficer()"
+              (valueChange)="state.setEditCaptureOfficer($event)"
+              [invalid]="state.editCaptureOfficerError() !== ''"
               [required]="true"
             />
-            @if (state.closeOfficerError()) {
-              <p class="field-error" role="alert">{{ state.closeOfficerError() }}</p>
+            @if (state.editCaptureOfficerError()) {
+              <p class="field-error" role="alert">{{ state.editCaptureOfficerError() }}</p>
             }
           </div>
           <div class="form-field">
-            <label for="close-location">Ubicación de la captura</label
+            <label for="edit-capture-location">Ubicación de la captura</label
             ><cs-input
-              id="close-location"
+              id="edit-capture-location"
               fieldSize="md"
               placeholder="Dirección o referencia donde se capturó la unidad"
-              [value]="state.closeLocation()"
-              (valueChange)="state.setCloseLocation($event)"
-              [invalid]="state.closeLocationError() !== ''"
+              [value]="state.editCaptureLocation()"
+              (valueChange)="state.setEditCaptureLocation($event)"
+              [invalid]="state.editCaptureLocationError() !== ''"
               [required]="true"
             />
-            @if (state.closeLocationError()) {
-              <p class="field-error" role="alert">{{ state.closeLocationError() }}</p>
+            @if (state.editCaptureLocationError()) {
+              <p class="field-error" role="alert">{{ state.editCaptureLocationError() }}</p>
             }
           </div>
         </div>
@@ -98,7 +96,6 @@ import { CaptureOrdersService } from '../capture-orders.service';
     `,
   ],
 })
-export class CaptureOrderCloseDialogComponent {
+export class CaptureOrderEditCaptureDialogComponent {
   protected readonly state = inject(CaptureOrdersService);
-  protected readonly secondaryAction = { label: 'Cancelar' };
 }

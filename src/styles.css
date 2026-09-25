@@ -166,6 +166,17 @@ cs-table .cs-table {
 .documents-checklist__box cs-icon {
   margin-block-start: -1px;
 }
+/* Indicador de visibilidad en el mapa operativo: separado del grupo de 4
+   casillas con un divisor, porque no es un documento más — resume si la
+   unidad ya cumple la regla (3 documentos + posición actual) sin que el
+   operador tenga que abrir el detalle para saberlo. */
+.documents-checklist__map-status {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: var(--layout-gap-2xs);
+  padding-inline-start: var(--layout-gap-xs);
+  border-inline-start: var(--layout-border-thin) solid var(--color-border-divider);
+}
 
 /* Trazabilidad de ruta del mapa embebido de Bitácora
    (fleet-map-canvas.component.ts) — Leaflet inyecta estos elementos fuera
@@ -196,6 +207,43 @@ cs-table .cs-table {
   50% {
     opacity: 1;
   }
+}
+
+/* Tooltip nativo de Leaflet sobre cada marcador de unidad
+   (fleet-map-canvas.component.ts#renderUnits/renderEvents) — mismo motivo
+   que la trazabilidad de arriba: Leaflet lo inyecta fuera del árbol de
+   Angular, la encapsulación de estilos no lo alcanza. Por defecto usa el
+   estilo crudo de Leaflet (caja blanca, texto negro), que no es el tooltip
+   real del sistema de diseño — comparar con `cs-tooltip` (fondo oscuro,
+   texto claro; ver el hover de las casillas de documentos en Capturas). Acá
+   se replican los mismos tokens que usa `cs-tooltip` internamente (fondo
+   `--color-background-neutral-strongest`, tipografía `label/small` en peso
+   `accent`, ver `Tooltip.popupStyle` en el DS) porque un marcador de
+   Leaflet no puede montar el componente Angular real. */
+.leaflet-tooltip {
+  padding: var(--layout-padding-xs) var(--layout-padding-md);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-background-neutral-strongest);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text-inverse);
+  font-family: var(--font-family-content);
+  font-size: var(--font-size-label-small);
+  font-weight: var(--font-weight-accent);
+  line-height: var(--font-line-height-label-small);
+  letter-spacing: var(--font-letter-spacing-content);
+}
+.leaflet-tooltip-top:before {
+  border-top-color: var(--color-background-neutral-strongest);
+}
+.leaflet-tooltip-bottom:before {
+  border-bottom-color: var(--color-background-neutral-strongest);
+}
+.leaflet-tooltip-left:before {
+  border-left-color: var(--color-background-neutral-strongest);
+}
+.leaflet-tooltip-right:before {
+  border-right-color: var(--color-background-neutral-strongest);
 }
 
 /* Evento del viaje seleccionado (fleet-map-canvas.component.ts,
