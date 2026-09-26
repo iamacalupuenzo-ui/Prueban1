@@ -36,7 +36,7 @@
         "detail": "Orden registrada a solicitud del cliente."
       }
     ],
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0103",
@@ -93,7 +93,7 @@
     "receivedOn": "2026-09-13",
     "createdAt": "13 sep. 2026, 13:35",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0107",
@@ -143,7 +143,7 @@
     "receivedOn": "2026-09-08",
     "createdAt": "8 sep. 2026, 08:10",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0112",
@@ -153,7 +153,7 @@
     "receivedOn": "2026-09-07",
     "createdAt": "7 sep. 2026, 09:17",
     "status": "Capturado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0113",
@@ -163,7 +163,7 @@
     "receivedOn": "2026-09-06",
     "createdAt": "6 sep. 2026, 10:24",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0114",
@@ -183,7 +183,7 @@
     "receivedOn": "2026-09-04",
     "createdAt": "4 sep. 2026, 12:38",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0116",
@@ -193,7 +193,7 @@
     "receivedOn": "2026-09-03",
     "createdAt": "3 sep. 2026, 13:45",
     "status": "Paralizado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0117",
@@ -203,7 +203,7 @@
     "receivedOn": "2026-09-02",
     "createdAt": "2 sep. 2026, 14:52",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0118",
@@ -223,7 +223,7 @@
     "receivedOn": "2026-08-31",
     "createdAt": "31 ago. 2026, 16:06",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0120",
@@ -253,7 +253,7 @@
     "receivedOn": "2026-08-28",
     "createdAt": "28 ago. 2026, 09:27",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0123",
@@ -293,7 +293,7 @@
     "receivedOn": "2026-08-24",
     "createdAt": "24 ago. 2026, 13:55",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0127",
@@ -343,7 +343,7 @@
     "receivedOn": "2026-08-19",
     "createdAt": "19 ago. 2026, 08:30",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0132",
@@ -353,7 +353,7 @@
     "receivedOn": "2026-08-18",
     "createdAt": "18 ago. 2026, 09:37",
     "status": "Paralizado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0133",
@@ -363,7 +363,7 @@
     "receivedOn": "2026-08-17",
     "createdAt": "17 ago. 2026, 10:44",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0134",
@@ -383,7 +383,7 @@
     "receivedOn": "2026-08-15",
     "createdAt": "15 ago. 2026, 12:58",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0136",
@@ -393,7 +393,7 @@
     "receivedOn": "2026-08-14",
     "createdAt": "14 ago. 2026, 13:05",
     "status": "Capturado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0137",
@@ -403,7 +403,7 @@
     "receivedOn": "2026-08-13",
     "createdAt": "13 ago. 2026, 14:12",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0138",
@@ -423,7 +423,7 @@
     "receivedOn": "2026-08-11",
     "createdAt": "11 ago. 2026, 16:26",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0140",
@@ -453,7 +453,7 @@
     "receivedOn": "2026-08-08",
     "createdAt": "8 ago. 2026, 09:47",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0143",
@@ -493,7 +493,7 @@
     "receivedOn": "2026-08-04",
     "createdAt": "4 ago. 2026, 13:15",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0147",
@@ -543,7 +543,7 @@
     "receivedOn": "2026-07-30",
     "createdAt": "30 jul. 2026, 08:50",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0152",
@@ -553,7 +553,7 @@
     "receivedOn": "2026-07-29",
     "createdAt": "29 jul. 2026, 09:57",
     "status": "Capturado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0153",
@@ -563,7 +563,7 @@
     "receivedOn": "2026-07-28",
     "createdAt": "28 jul. 2026, 10:04",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0154",
@@ -583,7 +583,7 @@
     "receivedOn": "2026-07-26",
     "createdAt": "26 jul. 2026, 12:18",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0156",
@@ -593,7 +593,7 @@
     "receivedOn": "2026-07-25",
     "createdAt": "25 jul. 2026, 13:25",
     "status": "Paralizado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0157",
@@ -603,7 +603,7 @@
     "receivedOn": "2026-07-24",
     "createdAt": "24 jul. 2026, 14:32",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0158",
@@ -623,7 +623,7 @@
     "receivedOn": "2026-07-22",
     "createdAt": "22 jul. 2026, 16:46",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0160",
@@ -653,7 +653,7 @@
     "receivedOn": "2026-07-19",
     "createdAt": "19 jul. 2026, 09:07",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0163",
@@ -693,7 +693,7 @@
     "receivedOn": "2026-07-15",
     "createdAt": "15 jul. 2026, 13:35",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0167",
@@ -743,7 +743,7 @@
     "receivedOn": "2026-07-10",
     "createdAt": "10 jul. 2026, 08:10",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0172",
@@ -753,7 +753,7 @@
     "receivedOn": "2026-07-09",
     "createdAt": "9 jul. 2026, 09:17",
     "status": "Paralizado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0173",
@@ -763,7 +763,7 @@
     "receivedOn": "2026-07-08",
     "createdAt": "8 jul. 2026, 10:24",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0174",
@@ -783,7 +783,7 @@
     "receivedOn": "2026-07-06",
     "createdAt": "6 jul. 2026, 12:38",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0176",
@@ -793,7 +793,7 @@
     "receivedOn": "2026-07-05",
     "createdAt": "5 jul. 2026, 13:45",
     "status": "Capturado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0177",
@@ -803,7 +803,7 @@
     "receivedOn": "2026-07-04",
     "createdAt": "4 jul. 2026, 14:52",
     "status": "Pendiente",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0178",
@@ -823,7 +823,7 @@
     "receivedOn": "2026-07-02",
     "createdAt": "2 jul. 2026, 16:06",
     "status": "Observado",
-    "financiera": "Mapfre"
+    "financiera": "MAF"
   },
   {
     "id": "CAP-0180",
@@ -834,5 +834,25 @@
     "createdAt": "1 jul. 2026, 17:13",
     "status": "Paralizado",
     "financiera": "Santander"
+  },
+  {
+    "id": "CAP-0181",
+    "unitCode": "BSQ205",
+    "source": "VILLALOBOS",
+    "caseNumber": "12754-2021-0-1817-JR-CO-05",
+    "receivedOn": "2026-06-01",
+    "createdAt": "1 jun. 2026, 09:00",
+    "status": "Pendiente",
+    "financiera": "Santander",
+    "engineCode": "460624",
+    "clientName": "MARIA GREGORIA ESCOBAR DATICA",
+    "marca": "MASERATI",
+    "modelo": "LEVANTE",
+    "contractStatus": "Activo",
+    "lastPosition": [
+      -12.0774,
+      -77.0916
+    ],
+    "lastPositionAt": "2026-06-01T09:00:00"
   }
 ]

@@ -12,6 +12,7 @@ import {
   type ResolveConflictChoice,
 } from '../../core/orders/mock-capture-orders.service';
 import {
+  CAPTURE_FORMAT_FINANCIERA_NAMES,
   detectCaptureFormat,
   parseCaptureRows,
   type ParsedCaptureRow,
@@ -117,7 +118,7 @@ export class CaptureOrdersTransitionsService {
     if (!signature) {
       return {
         kind: 'error',
-        message: 'No reconocemos este formato de archivo — no coincide con Santander ni Mapfre.',
+        message: `No reconocemos este formato de archivo — no coincide con ${CAPTURE_FORMAT_FINANCIERA_NAMES.join(' ni ')}.`,
       };
     }
     return {

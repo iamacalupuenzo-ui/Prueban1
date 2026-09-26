@@ -2,26 +2,21 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { Icon, InputDropdown, InputDropdownOption, InputGroup, InputGroupAddon, InputGroupInput, Popover } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
   CAPTURE_CONTRACT_STATUSES,
+  CAPTURE_DOCUMENT_DEFINITIONS,
   CAPTURE_ORDER_STATUSES,
 } from '../../core/orders/mock-capture-orders.service';
-import { DateRangeFilterComponent, type DateRangeFilterValue } from '../../shared/date-range-filter.component';
+import { UnitTypeMultiSelectComponent, type UnitTypeFilterOption } from '../../shared/unit-type-multi-select.component';
 import { CaptureOrdersService } from './capture-orders.service';
 
 /**
- * Barra de filtros de la matriz de capturas: búsqueda, estado y rango de
- * fechas con su propio popover. Extraído de `new-capture-order.page.ts`
- * (bloque `.matrix-toolbar`). El popover de rango de fechas es UI local del
- * toolbar (nadie más lo necesita); en cambio `dateFrom`/`dateTo` viven en
- * `CaptureOrdersService` porque alimentan el filtrado de la tabla.
- *
- * PRUEBA VISUAL (22 sep. 2026, a pedido de Enzo, no confirmado como
- * definitivo): Contrato/Ubicación/Fecha se movieron detrás de un botón
- * "Más filtros" con popover, dejando solo Buscar + Estado visibles. Si no
- * se confirma, revertir a los cinco campos en línea (ver historial de git).
+ * Barra de filtros de la matriz de capturas: búsqueda, estado y el resto de
+ * filtros (Contrato/GPS/Ubicación/Documentos) detrás de un popover "Más
+ * filtros". Extraído de `new-capture-order.page.ts` (bloque `.matrix-toolbar`).
+ * El filtro de rango de fechas se quitó a pedido explícito (2026-09-25).
  */
 @Component({
   selector: 'app-capture-order-toolbar',
-  imports: [DateRangeFilterComponent, Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput, Popover],
+  imports: [Icon, InputDropdown, InputGroup, InputGroupAddon, InputGroupInput, Popover, UnitTypeMultiSelectComponent],
   template: `
     <div class="matrix-toolbar" aria-label="Filtros de la matriz de capturas">
       <div class="toolbar-field">
@@ -94,6 +89,19 @@ import { CaptureOrdersService } from './capture-orders.service';
               />
             </div>
             <div class="toolbar-field">
+              <label id="capture-gps-label">GPS</label
+              ><cs-input-dropdown
+                class="status-filter-control"
+                aria-labelledby="capture-gps-label"
+                placeholder="Todos"
+                size="md"
+                [fullWidth]="true"
+                [options]="gpsOptions"
+                [value]="state.gpsFilter()"
+                (valueChange)="state.setGpsFilter($event)"
+              />
+            </div>
+            <div class="toolbar-field">
               <label id="capture-location-label">Ubicación</label
               ><cs-input-dropdown
                 class="status-filter-control"
@@ -107,10 +115,13 @@ import { CaptureOrdersService } from './capture-orders.service';
               />
             </div>
             <div class="toolbar-field">
-              <app-date-range-filter
-                label="Fecha de registro"
-                [value]="{ from: state.dateFrom(), to: state.dateTo() }"
-                (valueChange)="onDateRangeChange($event)"
+              <app-unit-type-multi-select
+                inputId="capture-documents-filter"
+                label="Documentos"
+                placeholder="Todos los documentos"
+                [options]="documentOptions"
+                [value]="state.documentsFilter()"
+                (valueChange)="state.setDocumentsFilter($event)"
               />
             </div>
           </div>
@@ -131,6 +142,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       }
       .toolbar-field {
         display: grid;
+        min-inline-size: 0;
         gap: var(--layout-gap-xs);
       }
       .toolbar-field > label {
@@ -144,6 +156,7 @@ import { CaptureOrdersService } from './capture-orders.service';
       }
       .status-filter-control {
         display: flex;
+        min-inline-size: 0;
       }
       .toolbar-field__spacer {
         display: block;
@@ -216,19 +229,29 @@ export class CaptureOrderToolbarComponent {
     { label: 'Todos los contratos', value: '__all__' },
     ...CAPTURE_CONTRACT_STATUSES.map((status) => ({ label: status, value: status })),
   ];
+  protected readonly gpsOptions: InputDropdownOption[] = [
+    { label: 'Todos', value: '__all__' },
+    { label: 'Con GPS', value: 'with' },
+    { label: 'Sin señal', value: 'no-signal' },
+    { label: 'Sin GPS', value: 'no-gps' },
+  ];
   protected readonly locationOptions: InputDropdownOption[] = [
     { label: 'Todas', value: '__all__' },
     { label: 'Con ubicación', value: 'with' },
-    { label: 'Sin posición disponible', value: 'no-signal' },
-    { label: 'Sin GPS', value: 'no-gps' },
+    { label: 'Sin ubicación en los últimos 30 días', value: 'stale' },
+    { label: 'Sin posición disponible', value: 'none' },
   ];
+  protected readonly documentOptions: UnitTypeFilterOption[] = CAPTURE_DOCUMENT_DEFINITIONS.map(
+    (definition) => ({ label: definition.label, value: definition.type }),
+  );
 
   protected readonly moreFiltersOpen = signal(false);
   protected readonly activeExtraFilterCount = computed(() => {
     let count = 0;
     if (this.state.contractFilter()) count++;
+    if (this.state.gpsFilter()) count++;
     if (this.state.locationFilter()) count++;
-    if (this.state.dateFrom() && this.state.dateTo()) count++;
+    if (this.state.documentsFilter().length) count++;
     return count;
   });
 
@@ -254,9 +277,5 @@ export class CaptureOrderToolbarComponent {
     const target = event.target as HTMLElement | null;
     if (target?.closest('.more-filters-trigger, cs-popover')) return;
     this.closeMoreFilters();
-  }
-
-  protected onDateRangeChange(value: DateRangeFilterValue): void {
-    this.state.setDateRange(value.from, value.to);
   }
 }

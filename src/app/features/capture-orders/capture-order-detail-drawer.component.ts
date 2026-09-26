@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { Button, Icon, Tab, Tabs, Tag, Tooltip } from '@iamacalupuenzo-ui/comsatel-ds';
+import { Button, Icon, Tab, Tabs, Tag } from '@iamacalupuenzo-ui/comsatel-ds';
 import { CAPTURE_DOCUMENT_DEFINITIONS } from '../../core/orders/mock-capture-orders.service';
 import { SideDrawerComponent } from '../../shared/side-drawer.component';
 import { CaptureOrdersService } from './capture-orders.service';
@@ -15,7 +15,7 @@ import { CaptureOrdersService } from './capture-orders.service';
  */
 @Component({
   selector: 'app-capture-order-detail-drawer',
-  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag, Tooltip],
+  imports: [Button, Icon, SideDrawerComponent, Tab, Tabs, Tag],
   template: `
     <app-side-drawer
       [isOpen]="state.detailsOpen()"
@@ -27,8 +27,7 @@ import { CaptureOrdersService } from './capture-orders.service';
         <cs-tabs [value]="activeTab()" (valueChange)="activeTab.set($event)">
           <cs-tab class="capture-detail-tab" value="info" label="Información">
             <div class="details-content">
-              <section class="detail-section" aria-labelledby="detail-information-title">
-                <h3 id="detail-information-title">Información de la orden</h3>
+              <section class="detail-section" aria-label="Información de la orden">
                 <dl class="detail-data">
                   <div>
                     <dt>Placa</dt>
@@ -101,27 +100,35 @@ import { CaptureOrdersService } from './capture-orders.service';
                       </dd>
                     </div>
                   }
-                  @if (order.captureOfficer) {
-                    <div>
-                      <dt>Responsable de la captura</dt>
-                      <dd class="detail-data__editable">
-                        {{ order.captureOfficer }}
-                        <button
-                          type="button"
-                          class="detail-data__edit"
-                          aria-label="Editar responsable y ubicación de la captura"
-                          (click)="state.openEditCaptureDetails(order)"
-                        >
-                          <cs-icon name="pencil" [size]="12" aria-hidden="true" />
-                        </button>
-                      </dd>
-                    </div>
-                  }
-                  @if (order.captureLocation) {
-                    <div>
-                      <dt>Ubicación de la captura</dt>
-                      <dd>{{ order.captureLocation }}</dd>
-                    </div>
+                  @if (order.status === 'Capturado') {
+                    @if (order.capturedAt) {
+                      <div>
+                        <dt>Fecha de captura</dt>
+                        <dd>{{ state.createdDateLabel(order.capturedAt) }}</dd>
+                      </div>
+                    }
+                    @if (order.captureOfficer) {
+                      <div>
+                        <dt>Responsable de la captura</dt>
+                        <dd class="detail-data__editable">
+                          {{ order.captureOfficer }}
+                          <button
+                            type="button"
+                            class="detail-data__edit"
+                            aria-label="Editar responsable y ubicación de la captura"
+                            (click)="state.openEditCaptureDetails(order)"
+                          >
+                            <cs-icon name="pencil" [size]="12" aria-hidden="true" />
+                          </button>
+                        </dd>
+                      </div>
+                    }
+                    @if (order.captureLocation) {
+                      <div>
+                        <dt>Ubicación de la captura</dt>
+                        <dd>{{ order.captureLocation }}</dd>
+                      </div>
+                    }
                   }
                 </dl>
               </section>
@@ -156,14 +163,6 @@ import { CaptureOrdersService } from './capture-orders.service';
                 <div class="detail-location__header">
                   <h3 id="detail-location-title">Última ubicación</h3>
                   <div class="detail-location__header-actions">
-                    <cs-tooltip [content]="state.mapStatusReason(order)" side="left">
-                      <cs-tag
-                        [value]="state.appearsOnMap(order) ? 'En el mapa' : 'Fuera del mapa'"
-                        [severity]="state.appearsOnMap(order) ? 'success' : 'secondary'"
-                        [rounded]="true"
-                        size="sm"
-                      />
-                    </cs-tooltip>
                     <span
                       class="detail-location__history"
                       aria-label="Historial de ubicaciones: próximamente disponible"
@@ -242,8 +241,7 @@ import { CaptureOrdersService } from './capture-orders.service';
           </cs-tab>
           <cs-tab class="capture-detail-tab" value="historial" label="Historial">
             <div class="details-content">
-              <section class="status-timeline" aria-labelledby="status-timeline-title">
-                <h3 id="status-timeline-title">Historial de la orden</h3>
+              <section class="status-timeline" aria-label="Historial de la orden">
                 <ol>
                   @for (
                     entry of state.statusEntries(order);

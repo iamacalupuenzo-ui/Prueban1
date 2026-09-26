@@ -1,4 +1,4 @@
-import { computed, Component, inject, input } from '@angular/core';
+import { computed, Component, inject } from '@angular/core';
 import { Icon } from '@iamacalupuenzo-ui/comsatel-ds';
 import {
   MockCaptureOrdersService,
@@ -15,9 +15,6 @@ import { FleetMapService } from './fleet-map.service';
 @Component({
   selector: 'app-capture-order-info-card',
   imports: [Icon],
-  host: {
-    '[class.order-card-host--left]': 'side() === "left"',
-  },
   template: `
     @if (unit(); as selectedUnit) {
       <aside class="order-card" aria-labelledby="capture-order-title">
@@ -54,9 +51,11 @@ import { FleetMapService } from './fleet-map.service';
     }
   `,
   styles: [`
-    :host { position: absolute; z-index: 500; top: var(--layout-padding-md); right: var(--layout-padding-md); display: block; inline-size: 408px; max-inline-size: calc(100% - 346px); pointer-events: none; }
-    /* Vista de Seguir unidad (follow-unit-view.component.ts): no compite con el buscador flotante, así que va a la izquierda con el mismo ancho. */
-    :host.order-card-host--left { right: auto; left: var(--layout-padding-md); max-inline-size: calc(100% - (var(--layout-padding-md) * 2)); }
+    /* right desplazado el ancho del panel de notificaciones (306px, ver
+       fleet-notifications-panel.component.ts) + su propio padding — ambos
+       viven en la esquina superior derecha del mapa y sin este corrimiento
+       la tarjeta de la orden queda encima, tapándolo. */
+    :host { position: absolute; z-index: 500; top: var(--layout-padding-md); right: calc(306px + var(--layout-padding-md) * 2); display: block; inline-size: 408px; max-inline-size: calc(100% - 346px - 306px - var(--layout-padding-md)); pointer-events: none; }
     .order-card { pointer-events: auto; overflow: hidden; border: var(--layout-border-thin) solid var(--color-border-neutral-subtle); border-radius: var(--radius-md); background: #f8f5ed; box-shadow: var(--shadow-lg); color: var(--color-text-base-default); }
     .order-card__header { display: flex; align-items: start; justify-content: space-between; gap: var(--layout-gap-md); padding: var(--layout-padding-xl) var(--layout-padding-xl) var(--layout-padding-lg); }
     .order-card__eyebrow { margin: 0 0 var(--layout-gap-2xs); color: var(--color-text-base-subtle); font-size: var(--font-size-content-note); font-weight: var(--font-weight-accent); line-height: var(--font-line-height-content-note); }
@@ -70,8 +69,6 @@ import { FleetMapService } from './fleet-map.service';
   `],
 })
 export class CaptureOrderInfoCardComponent {
-  /** 'left' en `follow-unit-view.component.ts` — ahí no hay buscador flotante con el que competir. */
-  readonly side = input<'left' | 'right'>('right');
   protected readonly state = inject(FleetMapService);
   protected readonly captures = inject(MockCaptureOrdersService);
   protected readonly unit = this.state.selectedUnit;

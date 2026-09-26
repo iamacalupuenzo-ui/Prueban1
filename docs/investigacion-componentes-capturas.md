@@ -1049,6 +1049,42 @@ Fecha: 22 de septiembre de 2026.
   (`Buscar` + `Estado` visibles, resto detrás de "Más filtros") — ver
   `capture-order-toolbar.component.ts`.
 
+## `cs-input-dropdown` no trunca su valor seleccionado (2026-09-25)
+
+- **Hallazgo verificado.** El botón trigger de `cs-input-dropdown`
+  (`.cs-input-dropdown__trigger`) fija `min-width: 0` inline (permite
+  encogerse dentro de un contenedor angosto), pero no aplica
+  `overflow: hidden` ni `text-overflow: ellipsis` — ni el botón ni el
+  `<span class="cs-input-dropdown__value">` interno. Con una opción de
+  texto largo (ej. "Sin ubicación en los últimos 30 días") en un contenedor
+  de ancho fijo (el popover "Más filtros", 240px), el texto se desborda
+  visualmente en vez de truncarse con puntos suspensivos — el componente
+  público no expone forma de pedirle ese comportamiento.
+- **Por qué no se corrige desde el consumidor sin más:** el trigger y su
+  `<span>` de valor son DOM interno de `cs-input-dropdown`, fuera del
+  `ViewEncapsulation` de cualquier componente propio — un selector normal en
+  los `styles` de `capture-order-toolbar.component.ts` no los alcanza, y
+  `::ng-deep` está prohibido (regla 2 de `CLAUDE.md`).
+- **Corrección local aplicada.** Regla en el stylesheet global
+  (`src/styles.css`, no en un componente encapsulado — mismo criterio que
+  `.fleet-trail-line`/`.fleet-trail-arrow` para DOM de Leaflet), acotada al
+  popover de filtros para no afectar otros usos de `cs-input-dropdown` en la
+  app:
+  ```css
+  .more-filters-popover .cs-input-dropdown__trigger { overflow: hidden; }
+  .more-filters-popover .cs-input-dropdown__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  ```
+- **Propuesta para el DS:** que `.cs-input-dropdown__trigger`/`__value`
+  incluyan `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`
+  por defecto en su propio CSS encapsulado — ya puso `min-width: 0`, el
+  truncamiento es el paso que falta para que ese `min-width` sirva de algo
+  visualmente.
+
 ## Pendientes de definición funcional
 
 - Validar con negocio si el número de expediente lo digita el operador, se genera automáticamente o ambos escenarios existen.

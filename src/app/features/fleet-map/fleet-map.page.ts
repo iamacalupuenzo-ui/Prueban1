@@ -7,7 +7,9 @@ import { FleetMapCanvasComponent } from './fleet-map-canvas.component';
 import { FleetMapSearchComponent } from './fleet-map-search.component';
 import { FleetMapService } from './fleet-map.service';
 import { FleetMapTabsComponent } from './fleet-map-tabs.component';
-import { FollowUnitViewComponent } from './follow-unit-view.component';
+import { FleetNotificationsPanelComponent } from './fleet-notifications-panel.component';
+import { FollowingStopConfirmDialogComponent } from './following-stop-confirm-dialog.component';
+import { FollowingViewComponent } from './following-view.component';
 
 @Component({
   host: { class: 'fleet-map-page' },
@@ -17,7 +19,9 @@ import { FollowUnitViewComponent } from './follow-unit-view.component';
     FleetMapCanvasComponent,
     FleetMapSearchComponent,
     FleetMapTabsComponent,
-    FollowUnitViewComponent,
+    FleetNotificationsPanelComponent,
+    FollowingStopConfirmDialogComponent,
+    FollowingViewComponent,
     Icon,
   ],
   providers: [FleetMapService],
@@ -57,8 +61,8 @@ import { FollowUnitViewComponent } from './follow-unit-view.component';
       <div class="fleet-map__content">
         @if (state.bitacoraUnit()) {
           <app-bitacora-view />
-        } @else if (state.followUnit(); as followedUnit) {
-          <app-follow-unit-view [unit]="followedUnit" />
+        } @else if (state.activeFollowingGroup()) {
+          <app-following-view />
         } @else {
           @switch (telemetry.state()) {
             @case ('loading') { <section class="map-surface" aria-label="Cargando ubicación de unidades"><app-fleet-map-canvas /><p class="overlay" role="status">Cargando posiciones disponibles.</p></section> }
@@ -68,6 +72,7 @@ import { FollowUnitViewComponent } from './follow-unit-view.component';
               <section class="map-surface" [attr.aria-label]="'Mapa con ' + state.filteredUnits().length + ' unidades ubicadas'">
                 <app-fleet-map-canvas [units]="state.filteredUnits()" />
                 <app-fleet-map-search />
+                <app-fleet-notifications-panel />
                 <div class="stationary-legend" aria-label="Indicador de unidad detenida por más de una hora">
                   <span class="stationary-legend__swatch" aria-hidden="true"></span>
                   <span>Unidad detenida por más de 1 h</span>
@@ -81,6 +86,7 @@ import { FollowUnitViewComponent } from './follow-unit-view.component';
       </div>
       <app-fleet-map-tabs />
     </section>
+    <app-following-stop-confirm-dialog />
   `,
   styles: [`
     :host { display: block; block-size: 100%; }
@@ -94,7 +100,7 @@ import { FollowUnitViewComponent } from './follow-unit-view.component';
     /* Superficie operativa flotante: conserva una separación breve respecto
        al lienzo de la aplicación y recorta los tiles de Leaflet al radio. */
     .map-surface { position: absolute; inset: var(--layout-padding-md); overflow: hidden; background: var(--color-background-neutral-subtlest); border-radius: var(--radius-lg); }
-    app-fleet-map-canvas { position: absolute; inset: 0; }
+    .map-surface > app-fleet-map-canvas { position: absolute; inset: 0; }
     .stationary-legend { position: absolute; right: var(--layout-padding-lg); bottom: var(--layout-padding-lg); z-index: 400; display: flex; align-items: center; gap: var(--layout-gap-sm); max-width: calc(100% - var(--layout-padding-4xl)); padding: var(--layout-padding-sm) var(--layout-padding-md); border: var(--layout-border-thin) solid var(--color-border-neutral-subtle); border-radius: var(--radius-md); background: var(--elevation-surface-default); box-shadow: var(--shadow-md); color: var(--color-text-base-subtle); font-size: var(--font-size-content-note); line-height: var(--font-line-height-content-note); }
     .stationary-legend__swatch { flex: 0 0 18px; inline-size: 18px; block-size: 12px; border: 2px dashed #c62828; border-radius: var(--radius-full); background: rgb(239 83 80 / 9%); }
     .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; display: grid; gap: var(--layout-gap-lg); max-width: 480px; padding: var(--layout-padding-4xl); text-align: center; background: var(--color-background-base); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
@@ -159,9 +165,9 @@ export class FleetMapPage {
   // lienzo vacío del mapa o cualquier otra parte de la página.
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
-    if (!this.state.selectedUnitId() || this.state.bitacoraUnit() || this.state.followUnit()) return;
+    if (!this.state.selectedUnitId() || this.state.bitacoraUnit()) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.vehicle-card__main, .leaflet-marker-icon, app-capture-order-info-card')) return;
+    if (target?.closest('.vehicle-card__main, .leaflet-marker-icon, app-capture-order-info-card, .notification-card__main')) return;
     this.state.deselectUnit();
   }
 }

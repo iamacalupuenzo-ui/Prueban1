@@ -187,6 +187,7 @@ export class FleetTelemetryService {
   readonly state = signal<TelemetryState>('loading');
   readonly units = signal<FleetUnit[]>([]);
   readonly lastUpdated = signal<string | null>(null);
+  private simulationInterval?: number;
 
   constructor() {
     this.load();
@@ -198,10 +199,51 @@ export class FleetTelemetryService {
       this.units.set(MOCK_UNITS);
       this.lastUpdated.set(new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()));
       this.state.set('ready');
+      this.startMovementSimulation();
     }, 300);
   }
 
   retry(): void {
     this.load();
+  }
+
+  /**
+   * Antes de esto, el mock era 100% estático (una sola carga, sin polling) —
+   * no había forma real de que una unidad "empiece a moverse", así que
+   * `FleetNotificationsService` no tenía ningún evento genuino que detectar.
+   * Este intervalo simula telemetría viva: unidades ya en ruta reciben un
+   * pequeño ajuste de posición (se ven avanzar en el mapa), una unidad
+   * detenida arranca a moverse (`stationarySince` a `null` — dispara la
+   * notificación) y, de cuando en cuando, otra se detiene, para que el ciclo
+   * de eventos no se apague solo.
+   */
+  private startMovementSimulation(): void {
+    if (this.simulationInterval !== undefined) return;
+    this.simulationInterval = window.setInterval(() => {
+      const current = this.units();
+      if (!current.length) return;
+      const next = current.map((unit) => ({ ...unit }));
+
+      for (const unit of next) {
+        if (unit.status === 'En ruta' && !unit.stationarySince) {
+          const jitterLat = (Math.random() - 0.5) * 0.004;
+          const jitterLng = (Math.random() - 0.5) * 0.004;
+          unit.position = [unit.position[0] + jitterLat, unit.position[1] + jitterLng];
+          unit.lastUpdate = new Date().toISOString();
+        }
+      }
+
+      const idleStationary = next.filter((unit) => unit.status === 'En ruta' && unit.stationarySince);
+      if (idleStationary.length) {
+        idleStationary[Math.floor(Math.random() * idleStationary.length)].stationarySince = null;
+      }
+
+      const moving = next.filter((unit) => unit.status === 'En ruta' && !unit.stationarySince);
+      if (moving.length > 3 && Math.random() < 0.3) {
+        moving[Math.floor(Math.random() * moving.length)].stationarySince = new Date().toISOString();
+      }
+
+      this.units.set(next);
+    }, 12_000);
   }
 }

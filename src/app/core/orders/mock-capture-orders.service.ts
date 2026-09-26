@@ -38,8 +38,19 @@ export interface CaptureOrderDocument {
   fileSize: number;
 }
 
-export const CAPTURE_FINANCIERAS = ['Santander', 'Mapfre'] as const;
-export type CaptureFinanciera = (typeof CAPTURE_FINANCIERAS)[number];
+/**
+ * Financieras/entidades conocidas hoy — solo para poblar selects con un
+ * valor sugerido (ver `fleet-map-search.component.ts`). El *tipo*
+ * `CaptureFinanciera` es un `string` abierto a propósito (no una unión
+ * cerrada): soportar una entidad nueva es agregar UNA firma en
+ * `capture-order-formats.ts#CAPTURE_FORMAT_SIGNATURES`, no tocar este
+ * archivo ni ningún otro — así "el sistema soporta la carga de diversos
+ * estándares de documentos" (pedido explícito de Enzo, 2026-09-25) sin un
+ * techo arbitrario de 2. "MAF" es el nombre correcto de la entidad — no
+ * "Mapfre" (corregido el mismo día).
+ */
+export const CAPTURE_FINANCIERAS = ['Santander', 'MAF'] as const;
+export type CaptureFinanciera = string;
 
 /**
  * "Activo" (contrato vigente), "Sin contrato" (nunca tuvo contrato con
@@ -59,7 +70,7 @@ export type CaptureContractStatus = (typeof CAPTURE_CONTRACT_STATUSES)[number];
  * se valida contra SAP — pero el contrato de la función (unitCode +
  * engineCode → estado) ya queda listo para esa integración real. Se llama
  * para el 100% de las unidades de cualquier proveedor por igual: ninguna
- * columna del archivo (p. ej. "Proveedor Gps" de Mapfre) se usa como atajo
+ * columna del archivo (p. ej. "Proveedor Gps" de MAF) se usa como atajo
  * para saltarse esta validación, porque puede estar mal etiquetada.
  */
 export function sapContractStatusFor(unitCode: string, engineCode: string): CaptureContractStatus {
@@ -131,6 +142,24 @@ export interface CaptureOrder extends CaptureOrderDraft {
   captureLocation?: string;
   capturedAt?: string;
 }
+
+/**
+ * `captureOfficer`/`captureLocation`/`capturedAt` solo tienen sentido
+ * mientras la orden está Capturado — cualquier transición que la saque de
+ * ese estado (`revertToPending`, `observe`, `annul`) debe limpiarlos, si no
+ * el detalle de la unidad sigue mostrando "Responsable de la captura" y
+ * "Fecha de captura" de una captura que ya no es la vigente (bug reportado
+ * 2026-09-25: marcar Capturado, volver a Pendiente, esos datos quedaban
+ * pegados). Como cualquier estado puede pasar a cualquier otro (ver
+ * `canClose`/`canObserve`/`canRevertToPending`/`canAnnul`), estas tres
+ * transiciones spread esto DESPUÉS de `...current` para pisar el valor
+ * viejo, no antes.
+ */
+const CLEARED_CAPTURE_DETAILS: Pick<CaptureOrder, 'captureOfficer' | 'captureLocation' | 'capturedAt'> = {
+  captureOfficer: undefined,
+  captureLocation: undefined,
+  capturedAt: undefined,
+};
 
 export type CreateCaptureOrderResult =
   { kind: 'success'; order: CaptureOrder } | { kind: 'duplicate' | 'offline'; message: string };
@@ -231,7 +260,7 @@ const SEED_BULK_UPLOAD_BATCHES: readonly BulkUploadBatch[] = [
     id: 'LOTE-0001',
     uploadedAt: '18 sep. 2026, 08:15',
     fileName: 'mapfre_activos_18sep.xlsx',
-    financieras: ['Mapfre'],
+    financieras: ['MAF'],
     totalRows: 42,
     createdCount: 5,
     rejectedCount: 2,
@@ -253,7 +282,7 @@ const SEED_BULK_UPLOAD_BATCHES: readonly BulkUploadBatch[] = [
     id: 'LOTE-0003',
     uploadedAt: '20 sep. 2026, 07:50',
     fileName: 'capturas_mixtas_20sep.xlsx',
-    financieras: ['Santander', 'Mapfre'],
+    financieras: ['Santander', 'MAF'],
     totalRows: 90,
     createdCount: 12,
     rejectedCount: 3,
@@ -558,6 +587,7 @@ export class MockCaptureOrdersService {
     const timestamp = this.timestamp();
     const updated: CaptureOrder = {
       ...current,
+      ...CLEARED_CAPTURE_DETAILS,
       status: 'Paralizado',
       annulmentReason: reason.trim(),
       annulledAt: timestamp,
@@ -646,6 +676,7 @@ export class MockCaptureOrdersService {
     const timestamp = this.timestamp();
     const updated: CaptureOrder = {
       ...current,
+      ...CLEARED_CAPTURE_DETAILS,
       status: 'Pendiente',
       auditTrail: [
         ...this.auditOf(current),
@@ -672,6 +703,7 @@ export class MockCaptureOrdersService {
     const timestamp = this.timestamp();
     const updated: CaptureOrder = {
       ...current,
+      ...CLEARED_CAPTURE_DETAILS,
       status: 'Observado',
       observationReason: reason.trim(),
       observedAt: timestamp,

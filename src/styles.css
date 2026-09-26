@@ -926,3 +926,24 @@ body:has([aria-modal='true']) {
     grid-column: auto;
   }
 }
+
+/* `cs-input-dropdown` no trunca su valor seleccionado por su cuenta: al
+   elegir una opción, fija un `min-width` INLINE en el trigger midiendo el
+   ancho del texto elegido (ej. 254px para "Sin ubicación en los últimos 30
+   días"), que gana sobre cualquier CSS normal — por eso el botón se
+   desborda del popover de 240px en vez de encogerse. `!important` es la
+   única forma estándar (sin `::ng-deep`, prohibido por CLAUDE.md) de pisar
+   ese inline style desde fuera del componente. DOM interno: un selector en
+   los `styles` de capture-order-toolbar.component.ts no lo alcanza por
+   ViewEncapsulation, se corrige acá en global, acotado al popover de
+   filtros. Ver docs/investigacion-componentes-capturas.md (2026-09-25). */
+.more-filters-popover .cs-input-dropdown__trigger {
+  overflow: hidden;
+  min-width: 0 !important;
+}
+.more-filters-popover .cs-input-dropdown__value {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

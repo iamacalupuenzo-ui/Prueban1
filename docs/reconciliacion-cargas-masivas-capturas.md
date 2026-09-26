@@ -6,9 +6,10 @@ Estado: **etapas 1, 2 y 3 implementadas** (Financiera real, reconciliación auto
 ## Contexto de negocio
 
 Cada carga masiva de capturas pertenece a un grupo de aseguradoras — hoy solo
-Santander y Mapfre. Un archivo puede traer unidades de una sola financiera o
-de ambas mezcladas; la financiera se identifica por fila (columna del
-archivo), no por una elección previa al subir.
+Santander y MAF (nombre correcto de la entidad — ver nota de 2026-09-25 más
+abajo). Un archivo puede traer unidades de una sola financiera o de ambas
+mezcladas; la financiera se identifica por fila (columna del archivo), no
+por una elección previa al subir.
 
 La información de la matriz **no es estática**: cada carga es una foto
 completa de lo que esa aseguradora considera activo en ese momento. Cuando
@@ -37,8 +38,14 @@ de cada orden.
   con un hash sobre `unitCode` (`financialEntityOf`, ya eliminado); ahora es
   un campo real de `CaptureOrderDraft`/`CaptureOrder`
   (`core/orders/mock-capture-orders.service.ts`), poblado desde la fila del
-  archivo cargado. De paso, "MAF" se corrigió a "Mapfre" (nombre completo)
-  en todo el código y el fixture.
+  archivo cargado.
+  **Corrección 2026-09-25:** el nombre correcto de la entidad es "MAF", no
+  "Mapfre" (se había corregido al revés el 22 sep. — ver commit de esa
+  fecha). Se revirtió en todo el código, el fixture y esta misma nota.
+  Además `CaptureFinanciera` pasó de unión cerrada
+  (`'Santander' | 'Mapfre'`) a `string` abierto: agregar una entidad nueva
+  ya no requiere tocar el sistema de tipos, solo agregar su firma en
+  `capture-order-formats.ts` (ver `docs/soporte-multi-financiera-carga-masiva.md`).
 - **Reconciliación automática** en `MockCaptureOrdersService.createBulk()`:
   recibe además de los borradores a crear (`drafts`) la lista completa de
   unidades subidas (`uploadedUnits: BulkReconciliationUnit[]` — incluye las

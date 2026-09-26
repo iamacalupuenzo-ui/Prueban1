@@ -59,6 +59,17 @@ o tocar una existente, en este orden:
    SAP mock, reconciliación de conflictos).
 6. `docs/auditoria-capturas-futuro.md` — pendientes conocidos de Capturas que
    todavía no tienen decisión de Producto.
+7. `docs/casuistica-gps-ultima-ubicacion.md` — matriz completa de qué muestran
+   las columnas "GPS" y "Última ubicación" según contrato y antigüedad del
+   reporte de posición (incluye el umbral de 30 días), y las reglas
+   completas de `appearsOnMap`/`mapStatusReason`.
+8. `docs/soporte-multi-financiera-carga-masiva.md` — consulta ABIERTA (sin
+   decisión de Producto) sobre soportar más de dos financieras/procesos en
+   la carga masiva (incluye el caso "IPJ - MAF"). No implementar sin
+   retomarlo con Enzo primero.
+9. `docs/prueba-dispositivo-movil-geolocalizacion.md` — plan a futuro para
+   probar la lógica de GPS con un celular real (requiere backend/relay que
+   hoy no existe). No implementar sin retomarlo con Enzo primero.
 
 Si vas a tomar una decisión de estructura que no está cubierta por ninguno
 de estos documentos, regístrala en el documento que corresponda (o crea uno

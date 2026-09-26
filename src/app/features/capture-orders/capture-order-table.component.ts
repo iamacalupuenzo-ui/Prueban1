@@ -68,19 +68,23 @@ import { CaptureOrdersService } from './capture-orders.service';
     /></ng-template>
     <ng-template #unitCell let-order>
       <span class="capture-orders-table__unit">
-        <cs-icon [name]="state.unitIconOf(order.unitCode)" [size]="16" aria-hidden="true" />
         <span>{{ order.unitCode }}</span>
       </span>
     </ng-template>
+    <ng-template #gpsCell let-order>
+      <cs-tag
+        [value]="state.gpsStatusLabelOf(order.unitCode)"
+        [severity]="state.gpsStatusSeverityOf(order.unitCode)"
+        icon="satellite"
+        [rounded]="true"
+        size="lg"
+      />
+    </ng-template>
     <ng-template #lastLocationCell let-order>
       @if (state.locationOf(order.unitCode); as location) {
-        <span class="last-location-value">
-          <cs-icon
-            name="satellite"
-            [size]="14"
-            style="color: var(--color-text-success-default)"
-            aria-hidden="true"
-          />
+        @if (state.locationIsStaleOf(order.unitCode)) {
+          <span class="last-location-empty">Sin ubicación en los últimos 30 días</span>
+        } @else {
           <span
             class="copy-on-hover"
             role="button"
@@ -97,21 +101,9 @@ import { CaptureOrdersService } from './capture-orders.service';
             <span>{{ location.lastLocation }}</span>
             <cs-icon name="copy" [size]="12" aria-hidden="true" />
           </span>
-        </span>
+        }
       } @else {
-        <span class="last-location-empty">
-          <cs-icon
-            name="satellite"
-            [size]="14"
-            [style.color]="
-              state.hasGpsOf(order.unitCode)
-                ? 'var(--color-text-warning-default)'
-                : 'var(--color-icon-neutral-subtlest)'
-            "
-            aria-hidden="true"
-          />
-          <span>{{ state.hasGpsOf(order.unitCode) ? 'Sin posición disponible' : 'Sin GPS' }}</span>
-        </span>
+        <span class="last-location-empty">Sin posición disponible</span>
       }
     </ng-template>
     <ng-template #caseNumberCell let-order>
@@ -504,17 +496,6 @@ import { CaptureOrdersService } from './capture-orders.service';
           padding-bottom: var(--layout-padding-xs);
         }
       }
-      .last-location-empty,
-      .last-location-value {
-        display: inline-flex;
-        align-items: flex-start;
-        gap: var(--layout-gap-xs);
-      }
-      .last-location-empty > cs-icon,
-      .last-location-value > cs-icon {
-        margin-top: var(--layout-padding-2xs);
-        flex-shrink: 0;
-      }
       .last-location-empty {
         color: var(--color-text-base-subtle);
       }
@@ -541,6 +522,7 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
   @ViewChild('caseNumberCell', { static: true })
   private caseNumberCellRef!: TemplateRef<unknown>;
   @ViewChild('contractCell', { static: true }) private contractCellRef!: TemplateRef<unknown>;
+  @ViewChild('gpsCell', { static: true }) private gpsCellRef!: TemplateRef<unknown>;
   @ViewChild('documentsCell', { static: true }) private documentsCellRef!: TemplateRef<unknown>;
   @ViewChild('actionsCell', { static: true }) private actionsCellRef!: TemplateRef<unknown>;
   @ViewChild('captureOrdersTable', { read: ElementRef })
@@ -553,6 +535,7 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
     { key: 'engine', label: 'Motor', width: '144px', isSortable: true },
     { key: 'caseNumber', label: 'Expediente', width: '176px', isSortable: true },
     { key: 'contract', label: 'Contrato', width: '128px', isSortable: true },
+    { key: 'gps', label: 'GPS', width: '128px', isSortable: true },
     { key: 'documents', label: 'Documentos', width: '140px', isSortable: true },
     { key: 'lastLocation', label: 'Última ubicación', isSortable: true },
     { key: 'status', label: 'Estado', width: '160px', isSortable: true },
@@ -570,6 +553,7 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
     engine: 144,
     caseNumber: 176,
     contract: 128,
+    gps: 128,
     documents: 140,
     lastLocation: 272,
     status: 160,
@@ -737,6 +721,8 @@ export class CaptureOrderTableComponent implements AfterViewInit, OnDestroy {
         return { template: this.caseNumberCellRef, context: { $implicit: order } };
       case 'contract':
         return { template: this.contractCellRef, context: { $implicit: order } };
+      case 'gps':
+        return { template: this.gpsCellRef, context: { $implicit: order } };
       case 'documents':
         return { template: this.documentsCellRef, context: { $implicit: order } };
       case 'status':

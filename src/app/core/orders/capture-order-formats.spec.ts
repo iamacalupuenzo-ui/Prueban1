@@ -8,7 +8,7 @@ import {
 } from './capture-order-formats';
 
 // Headers reales de cada proveedor (Santander: 41 columnas UPPER_SNAKE_CASE,
-// Mapfre: 20 columnas Title_Case) — solo las que importan para detección y
+// MAF: 20 columnas Title_Case) — solo las que importan para detección y
 // mapeo, los datos de las filas son sintéticos (no las PII reales del
 // archivo compartido).
 const SANTANDER_HEADERS = [
@@ -26,7 +26,7 @@ const SANTANDER_HEADERS = [
   'FECHA_RECEPCION_OFICIO_ORDEN_CAPTURA',
 ];
 
-const MAFRE_HEADERS = [
+const MAF_HEADERS = [
   'Num_Ope',
   'Cliente',
   'Placa',
@@ -55,8 +55,8 @@ describe('detectCaptureFormat', () => {
     expect(detectCaptureFormat(SANTANDER_HEADERS)?.financiera).toBe('Santander');
   });
 
-  it('reconoce Mapfre por sus columnas distintivas', () => {
-    expect(detectCaptureFormat(MAFRE_HEADERS)?.financiera).toBe('Mapfre');
+  it('reconoce MAF por sus columnas distintivas', () => {
+    expect(detectCaptureFormat(MAF_HEADERS)?.financiera).toBe('MAF');
   });
 
   it('devuelve null cuando el archivo no coincide con ningún formato conocido', () => {
@@ -105,8 +105,8 @@ describe('parseCaptureRows', () => {
     expect(row.receivedOn).toBe('2026-01-15');
   });
 
-  it('mapea y limpia las columnas de Mapfre', () => {
-    const signature = detectCaptureFormat(MAFRE_HEADERS)!;
+  it('mapea y limpia las columnas de MAF', () => {
+    const signature = detectCaptureFormat(MAF_HEADERS)!;
     const dataRows = [
       [
         '61215',

@@ -110,63 +110,63 @@ const UNIT_OPTIONS: UnitOption[] = [
   {
     code: 'VHC-1024',
     owner: 'María Salazar',
-    lastLocation: 'Av. Arequipa 4520, Miraflores · 20 sep. 2026, 10:18',
+    lastLocation: '20 sep. 2026, 10:18 · Av. Arequipa 4520, Miraflores',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.1211%2C-77.0297',
     icon: 'car',
   },
   {
     code: 'VHC-1041',
     owner: 'Carlos Mendoza',
-    lastLocation: 'Av. Javier Prado Este 1450, San Isidro · 20 sep. 2026, 10:32',
+    lastLocation: '20 sep. 2026, 10:32 · Av. Javier Prado Este 1450, San Isidro',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0931%2C-77.0201',
     icon: 'car',
   },
   {
     code: 'VHC-1158',
     owner: 'Ana Torres',
-    lastLocation: 'Av. Elmer Faucett 3200, Callao · 20 sep. 2026, 10:05',
+    lastLocation: '20 sep. 2026, 10:05 · Av. Elmer Faucett 3200, Callao',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0245%2C-77.1039',
     icon: 'car',
   },
   {
     code: 'TRK-2087',
     owner: 'Luis Ramos',
-    lastLocation: 'Av. Argentina 1860, Cercado de Lima · 20 sep. 2026, 10:21',
+    lastLocation: '20 sep. 2026, 10:21 · Av. Argentina 1860, Cercado de Lima',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0464%2C-77.0718',
     icon: 'truck',
   },
   {
     code: 'TRK-2143',
     owner: 'Rosa Quispe',
-    lastLocation: 'Carretera Central km 8.5, Ate · 20 sep. 2026, 10:14',
+    lastLocation: '20 sep. 2026, 10:14 · Carretera Central km 8.5, Ate',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0433%2C-76.9427',
     icon: 'truck',
   },
   {
     code: 'TRK-2206',
     owner: 'Jorge Cárdenas',
-    lastLocation: 'Av. Nicolás Ayllón 2740, El Agustino · 20 sep. 2026, 09:58',
+    lastLocation: '20 sep. 2026, 09:58 · Av. Nicolás Ayllón 2740, El Agustino',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0487%2C-76.9982',
     icon: 'truck',
   },
   {
     code: 'VAN-0412',
     owner: 'Elena Flores',
-    lastLocation: 'Av. República de Panamá 3560, Surquillo · 20 sep. 2026, 10:26',
+    lastLocation: '20 sep. 2026, 10:26 · Av. República de Panamá 3560, Surquillo',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.1235%2C-77.0178',
     icon: 'truck',
   },
   {
     code: 'VAN-0534',
     owner: 'Miguel Huamán',
-    lastLocation: 'Av. Universitaria 6890, Comas · 20 sep. 2026, 10:08',
+    lastLocation: '20 sep. 2026, 10:08 · Av. Universitaria 6890, Comas',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-11.9514%2C-77.0814',
     icon: 'truck',
   },
   {
     code: 'BUS-0379',
     owner: 'Patricia Vega',
-    lastLocation: 'Av. La Marina 2355, San Miguel · 20 sep. 2026, 10:11',
+    lastLocation: '20 sep. 2026, 10:11 · Av. La Marina 2355, San Miguel',
     lastLocationMapUrl: 'https://www.google.com/maps/search/?api=1&query=-12.0774%2C-77.0916',
     icon: 'bus',
   },
@@ -220,15 +220,23 @@ export class CaptureOrdersService {
   readonly statusFilter = signal('');
   readonly contractFilter = signal('');
   /**
-   * Independiente de `contractFilter`: el contrato viene del mock SAP y la
-   * posición de cruzar la unidad contra `FleetTelemetryService`, así que
-   * una unidad puede tener cualquier contrato y sí (o no) tener ubicación
-   * — no son la misma pregunta. Valores: '' (todas) | 'with' | 'without'.
+   * Independiente de `contractFilter` (el contrato viene del mock SAP; GPS y
+   * ubicación de cruzar la unidad contra `FleetTelemetryService`) y también
+   * independiente entre sí, desde que se separaron en dos filtros (2026-09-25,
+   * ver `docs/casuistica-gps-ultima-ubicacion.md`):
+   * - `gpsFilter`: "¿tiene GPS?" — mismas tres categorías de la columna GPS,
+   *   sin importar si el reporte está vencido. Valores: '' (todas) | 'with' |
+   *   'no-signal' | 'no-gps'.
+   * - `locationFilter`: "¿el dato de posición es utilizable ahora?" — ignora
+   *   por qué no hay posición (sin GPS o con GPS pero sin reportar, da igual).
+   *   Valores: '' (todas) | 'with' (vigente, ≤30 días) | 'stale' (vencida,
+   *   >30 días) | 'none' (sin posición).
    */
+  readonly gpsFilter = signal('');
   readonly locationFilter = signal('');
+  /** Vacío = sin filtro (ver `UnitTypeMultiSelectComponent`). AND entre los tipos seleccionados: la orden debe tener marcados TODOS, no basta con uno. */
+  readonly documentsFilter = signal<CaptureDocumentType[]>([]);
   readonly unitTypeFilter = signal<UnitType[]>([]);
-  readonly dateFrom = signal('');
-  readonly dateTo = signal('');
   readonly rowsPerPage = signal<RowsPerPage>(10);
   readonly page = signal(1);
   readonly sortKey = signal(DEFAULT_SORT.key);
@@ -251,23 +259,21 @@ export class CaptureOrdersService {
     const search = this.searchTerm().trim().toLocaleLowerCase();
     const status = this.statusFilter();
     const contract = this.contractFilter();
+    const gps = this.gpsFilter();
     const location = this.locationFilter();
-    const from = this.dateFrom();
-    const to = this.dateTo();
-    const hasDateRange = !!from && !!to;
-    return this.allOrders().filter((order) => {
-      const registrationDate = this.registrationDate(order.createdAt);
-      return (
+    const documents = this.documentsFilter();
+    return this.allOrders().filter(
+      (order) =>
         (!search ||
           `${order.id} ${order.unitCode} ${this.ownerOf(order.unitCode)}`
             .toLocaleLowerCase()
             .includes(search)) &&
         (!status || order.status === status) &&
         (!contract || this.contractStatusOf(order.unitCode) === contract) &&
+        (!gps || this.matchesGpsFilter(order.unitCode, gps)) &&
         (!location || this.matchesLocationFilter(order.unitCode, location)) &&
-        (!hasDateRange || (registrationDate >= from && registrationDate <= to))
-      );
-    });
+        (!documents.length || documents.every((type) => this.hasDocument(order, type))),
+    );
   });
   readonly sortedOrders = computed(() => {
     const key = this.sortKey();
@@ -321,8 +327,20 @@ export class CaptureOrdersService {
     this.contractFilter.set(value === '__all__' ? '' : value);
     this.page.set(1);
   }
+  setGpsFilter(value: string): void {
+    this.gpsFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
   setLocationFilter(value: string): void {
     this.locationFilter.set(value === '__all__' ? '' : value);
+    this.page.set(1);
+  }
+  setDocumentsFilter(value: readonly string[]): void {
+    this.documentsFilter.set(
+      value.filter((type): type is CaptureDocumentType =>
+        CAPTURE_DOCUMENT_DEFINITIONS.some((definition) => definition.type === type),
+      ),
+    );
     this.page.set(1);
   }
   setUnitTypeFilter(value: readonly string[]): void {
@@ -333,16 +351,6 @@ export class CaptureOrdersService {
     const selectedUnit = this.draft().unitCode;
     if (selectedUnit && nextTypes.length && !nextTypes.includes(this.unitTypeOf(selectedUnit)))
       this.setField('unitCode', '');
-  }
-  clearDateRange(): void {
-    this.dateFrom.set('');
-    this.dateTo.set('');
-    this.page.set(1);
-  }
-  setDateRange(from: string, to: string): void {
-    this.dateFrom.set(from);
-    this.dateTo.set(to);
-    this.page.set(1);
   }
   rowsPerPageValue(): string {
     return String(this.rowsPerPage());
@@ -387,6 +395,7 @@ export class CaptureOrdersService {
           lastLocation: this.locationOf(order.unitCode)?.lastLocation ?? '',
           engine: this.engineCodeOf(order.unitCode),
           contract: this.contractStatusOf(order.unitCode),
+          gps: this.gpsStatusLabelOf(order.unitCode),
           status: order.status,
         } as Record<string, string>
       )[key] ?? ''
@@ -436,15 +445,6 @@ export class CaptureOrdersService {
     if (meridiem === 'am' && hour === 12) hour = 0;
     return new Date(Number(match[3]), monthIndex, Number(match[1]), hour, Number(match[5])).getTime();
   }
-  private registrationDate(value: string): string {
-    const normalized = value.replace(/[  ]/g, ' ');
-    const match = normalized.match(/^(\d{1,2})\s+([a-záéíóú]{3,4})\.\s+(\d{4}),/i);
-    if (!match) return '';
-    const monthIndex = CaptureOrdersService.MONTH_INDEX[match[2].toLowerCase()];
-    if (monthIndex === undefined) return '';
-    return `${match[3]}-${String(monthIndex + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-  }
-
   // ---------------------------------------------------------------------
   // Helpers de datos de unidad/orden compartidos entre tabla, drawer y formulario
   // ---------------------------------------------------------------------
@@ -511,18 +511,67 @@ export class CaptureOrdersService {
     return this.contractStatusOf(unitCode) !== 'Sin contrato';
   }
   /**
-   * El filtro "Ubicación" replica las tres categorías que ya distingue la
-   * columna Última ubicación (ícono verde/naranja/gris): 'with' = reporta
-   * posición ahora; 'no-signal' = tiene GPS (Activo/No vigente) pero no
-   * reporta; 'no-gps' = nunca tuvo GPS (Sin contrato). "Sin posición
-   * disponible" y "Sin GPS" no son lo mismo, así que no comparten valor de
-   * filtro aunque las dos impliquen "sin ubicación".
+   * Columna "GPS" — separada de "Última ubicación" a pedido explícito: antes
+   * el ícono de esa columna mezclaba dos preguntas distintas ("¿tiene GPS?" y
+   * "¿dónde está?"). Mismas tres categorías que ya distinguía el ícono viejo
+   * (verde/naranja/gris): reporta posición ahora, tiene GPS pero no reporta,
+   * o nunca tuvo GPS.
    */
-  private matchesLocationFilter(unitCode: string, filter: string): boolean {
+  gpsStatusLabelOf(unitCode: string): string {
+    if (this.locationOf(unitCode)) return 'Con GPS';
+    return this.hasGpsOf(unitCode) ? 'Sin señal' : 'Sin GPS';
+  }
+  gpsStatusSeverityOf(unitCode: string): TagSeverity {
+    if (this.locationOf(unitCode)) return 'success';
+    return this.hasGpsOf(unitCode) ? 'warn' : 'secondary';
+  }
+  /**
+   * Umbral de vigencia de un reporte de posición — pasado este límite, la
+   * "Última ubicación" deja de mostrarse como dato operativo (decisión de
+   * Producto, 2026-09-25). Casuísticas completas (documentadas también en
+   * `docs/casuistica-gps-ultima-ubicacion.md`):
+   * - Sin contrato → nunca tuvo GPS → GPS "Sin GPS", ubicación "Sin posición disponible".
+   * - Con contrato, nunca reportó posición → GPS "Sin señal", ubicación "Sin posición disponible".
+   * - Con contrato, reportó hace ≤30 días → GPS "Con GPS", ubicación con fecha y dirección reales.
+   * - Con contrato, reportó hace >30 días → GPS sigue "Con GPS" (decisión explícita: la
+   *   antigüedad del reporte no cambia si la unidad "tiene GPS"), pero la ubicación se
+   *   reemplaza por el aviso de antigüedad — mostrar una dirección de hace más de un mes
+   *   como si fuera actual induciría a operar sobre un dato no confiable.
+   * Solo aplica a snapshots reales de carga masiva (`order.lastPositionAt`); el fixture
+   * demo (`UNIT_OPTIONS`) no trae una fecha propia rastreable y no se marca como vencido.
+   */
+  private static readonly STALE_LOCATION_DAYS = 30;
+  locationIsStaleOf(unitCode: string): boolean {
+    const lastPositionAt = this.orderOf(unitCode)?.lastPositionAt;
+    if (!lastPositionAt) return false;
+    const ageDays = (Date.now() - new Date(lastPositionAt).getTime()) / (24 * 60 * 60 * 1000);
+    return ageDays > CaptureOrdersService.STALE_LOCATION_DAYS;
+  }
+  /**
+   * Filtro "GPS" — replica las tres categorías de la columna GPS (ver
+   * `gpsStatusLabelOf`), ignorando si el reporte está vencido: 'with' =
+   * reporta posición ahora (vigente o vencida, da igual); 'no-signal' =
+   * tiene GPS (Activo/No vigente) pero nunca reportó; 'no-gps' = nunca tuvo
+   * GPS (Sin contrato).
+   */
+  private matchesGpsFilter(unitCode: string, filter: string): boolean {
     const hasPosition = !!this.locationOf(unitCode);
     if (filter === 'with') return hasPosition;
     if (hasPosition) return false;
     return filter === 'no-gps' ? !this.hasGpsOf(unitCode) : this.hasGpsOf(unitCode);
+  }
+  /**
+   * Filtro "Ubicación" — a diferencia del filtro GPS, no le importa POR QUÉ
+   * no hay posición utilizable (sin GPS o con GPS pero sin reportar es lo
+   * mismo acá), solo si el dato de posición sirve para operar ahora: 'with'
+   * = vigente (≤30 días); 'stale' = vencida (>30 días, ver
+   * `locationIsStaleOf`); 'none' = sin posición en absoluto.
+   */
+  private matchesLocationFilter(unitCode: string, filter: string): boolean {
+    const hasPosition = !!this.locationOf(unitCode);
+    if (!hasPosition) return filter === 'none';
+    const stale = this.locationIsStaleOf(unitCode);
+    return filter === 'stale' ? stale : filter === 'with' ? !stale : false;
   }
   contractStatusSeverity(status: CaptureContractStatus): TagSeverity {
     return status === 'Activo' ? 'success' : status === 'No vigente' ? 'warn' : 'secondary';
@@ -554,34 +603,35 @@ export class CaptureOrdersService {
     }
   }
   /**
-   * Documentos que habilitan el mapa: Resolución, Oficio y Notificación a
-   * Tránsito. La Requisitoria es el cuarto documento del expediente pero no
-   * condiciona esta regla — así lo definió Enzo explícitamente.
+   * Documentos que habilitan el mapa — actualizado 2026-09-25: ahora exige
+   * los 4 (Resolución, Oficio, Notificación a Tránsito y Requisitoria).
+   * Revierte la decisión del 23 sep. que excluía la Requisitoria a
+   * propósito; Enzo pidió el cambio explícitamente.
    */
-  private readonly mapEligibleDocumentTypes: readonly CaptureDocumentType[] = [
-    'resolution',
-    'oficio',
-    'transit-notification',
-  ];
   hasRequiredMapDocuments(order: CaptureOrder): boolean {
-    return this.mapEligibleDocumentTypes.every((type) => this.hasDocument(order, type));
+    return this.documentsCompleteCountOf(order) === CAPTURE_DOCUMENT_DEFINITIONS.length;
   }
   /**
-   * Una unidad aparece en el mapa operativo cuando (a) su orden sigue activa
-   * en el flujo (Pendiente u Observado — Observado solo cierra una
-   * descripción, no saca a la unidad de seguimiento), (b) tiene los tres
-   * documentos de `mapEligibleDocumentTypes` marcados Y (c) reporta una
-   * posición actual (`locationOf`). El estado de contrato no participa: una
-   * unidad "No vigente" con señal sí aparece — el contrato y el GPS son
-   * fuentes independientes (ver `locationOf`) — y una unidad "Activo" o
-   * "No vigente" sin señal, o "Sin contrato" (nunca tuvo GPS), no aparece
-   * aunque tenga los tres documentos. Capturado/Paralizado salen del mapa
-   * siempre: ya no requieren seguimiento operativo — a pedido de Enzo
-   * (23 sep. 2026).
+   * Una unidad aparece en el mapa operativo cuando (a) su orden sigue
+   * Pendiente — Observado, Capturado y Paralizado salen del mapa siempre,
+   * ya no requieren seguimiento operativo activo (Observado agregado
+   * 2026-09-25: normalmente se observa por falta de Requisitoria, pero se
+   * excluye por estado, no por conteo de documentos, para cubrir cualquier
+   * otro motivo de observación); (b) tiene los 4 documentos completos; y
+   * (c) reporta una posición VIGENTE (`locationOf` + no
+   * `locationIsStaleOf` — un reporte de más de 30 días no cuenta como
+   * posición actual, ver `docs/casuistica-gps-ultima-ubicacion.md`). El
+   * estado de contrato no participa: una unidad "No vigente" con señal sí
+   * aparece — el contrato y el GPS son fuentes independientes (ver
+   * `locationOf`).
    */
   appearsOnMap(order: CaptureOrder): boolean {
-    if (order.status === 'Capturado' || order.status === 'Paralizado') return false;
-    return this.hasRequiredMapDocuments(order) && !!this.locationOf(order.unitCode);
+    if (order.status !== 'Pendiente') return false;
+    return (
+      this.hasRequiredMapDocuments(order) &&
+      !!this.locationOf(order.unitCode) &&
+      !this.locationIsStaleOf(order.unitCode)
+    );
   }
   mapStatusReason(order: CaptureOrder): string {
     if (order.status === 'Capturado') {
@@ -590,13 +640,19 @@ export class CaptureOrdersService {
     if (order.status === 'Paralizado') {
       return 'Fuera del mapa: la captura está paralizada.';
     }
+    if (order.status === 'Observado') {
+      return 'Fuera del mapa: la captura está observada.';
+    }
     if (!this.hasRequiredMapDocuments(order)) {
-      return 'Fuera del mapa: falta marcar Resolución, Oficio y Notificación a Tránsito.';
+      return 'Fuera del mapa: falta completar los 4 documentos de respaldo.';
     }
     if (!this.locationOf(order.unitCode)) {
       return this.hasGpsOf(order.unitCode)
         ? 'Fuera del mapa: la unidad no reporta una posición actual.'
         : 'Fuera del mapa: la unidad nunca tuvo GPS instalado.';
+    }
+    if (this.locationIsStaleOf(order.unitCode)) {
+      return 'Fuera del mapa: el último reporte de posición tiene más de 30 días.';
     }
     return 'En el mapa: documentos completos y con posición actual.';
   }
@@ -614,7 +670,7 @@ export class CaptureOrdersService {
         code: unitCode,
         owner: this.ownerOf(unitCode),
         icon: this.unitIconOf(unitCode),
-        lastLocation: `${lat.toFixed(4)}, ${lng.toFixed(4)}${order.lastPositionAt ? ` · ${new Date(order.lastPositionAt).toLocaleString('es-PE')}` : ''}`,
+        lastLocation: `${order.lastPositionAt ? `${new Date(order.lastPositionAt).toLocaleString('es-PE')} · ` : ''}${lat.toFixed(4)}, ${lng.toFixed(4)}`,
         lastLocationMapUrl: `https://www.google.com/maps/search/?api=1&query=${lat}%2C${lng}`,
       };
     }

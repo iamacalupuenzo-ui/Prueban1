@@ -321,6 +321,16 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
   private trailArrowColor: string | null = null;
   private trailArrowMarkers: L.Marker[] = [];
   private stationaryRefreshInterval?: number;
+  /**
+   * Leaflet mide su contenedor una sola vez, al crearse — si después cambia
+   * de tamaño por CSS/layout (no por una acción propia del mapa, ej. la
+   * grilla de `following-view.component.ts` reacomodándose de 2x2 a "una
+   * fila ocupa el ancho completo" cuando se deja de seguir una unidad), el
+   * lienzo interno se queda con el tamaño viejo y la mitad se ve gris. Se
+   * detecta con ResizeObserver en vez de escuchar un evento propio porque
+   * el resize lo dispara un vecino del grid, no este componente.
+   */
+  private resizeObserver?: ResizeObserver;
 
   constructor() {
     effect(() => {
@@ -360,6 +370,8 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
     this.renderEvents();
     const selectedUnit = this.state.selectedUnit();
     if (selectedUnit) this.map.flyTo(selectedUnit.position, Math.max(this.map.getZoom(), 16));
+    this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+    this.resizeObserver.observe(this.mapElRef.nativeElement);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -551,6 +563,7 @@ export class FleetMapCanvasComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.stationaryRefreshInterval !== undefined) window.clearInterval(this.stationaryRefreshInterval);
+    this.resizeObserver?.disconnect();
     this.map?.remove();
   }
 }

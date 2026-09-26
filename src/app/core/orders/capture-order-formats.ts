@@ -1,12 +1,19 @@
 import type { CaptureFinanciera } from './mock-capture-orders.service';
 
 /**
- * Detección de proveedor por firma de columnas — ninguno de los dos formatos
- * reales (Santander, Mapfre) trae una columna de "financiera/concesionario":
- * la entidad se infiere por qué columnas trae el archivo, nunca se lee de un
- * valor. Columnas DISTINTIVAS a propósito (no las 41/20 completas de cada
- * formato): un proveedor real agrega/quita columnas con el tiempo, así que
- * exigir el 100% del set se rompería con el primer cambio menor.
+ * Detección de proveedor por firma de columnas — ninguno de los formatos
+ * reales conocidos (Santander, MAF) trae una columna de
+ * "financiera/concesionario": la entidad se infiere por qué columnas trae
+ * el archivo, nunca se lee de un valor. Columnas DISTINTIVAS a propósito
+ * (no las 41/20 completas de cada formato): un proveedor real agrega/quita
+ * columnas con el tiempo, así que exigir el 100% del set se rompería con el
+ * primer cambio menor.
+ *
+ * El sistema soporta la carga de varios estándares de documentos, no solo
+ * dos (pedido explícito de Enzo, 2026-09-25): agregar una entidad nueva es
+ * agregar UN objeto a `CAPTURE_FORMAT_SIGNATURES`, nada más — `financiera`
+ * en `mock-capture-orders.service.ts` es un `string` abierto, no una unión
+ * cerrada, así que un valor nuevo acá no requiere tocar ningún otro archivo.
  */
 export interface CaptureFormatColumnMap {
   unitCode: string;
@@ -52,7 +59,7 @@ export const CAPTURE_FORMAT_SIGNATURES: readonly CaptureFormatSignature[] = [
     },
   },
   {
-    financiera: 'Mapfre',
+    financiera: 'MAF',
     requiredColumns: ['NUM OPE', 'PROVEEDOR GPS', 'RQ', 'ESTADO OPERACION'],
     columnMap: {
       unitCode: 'PLACA',
@@ -67,6 +74,17 @@ export const CAPTURE_FORMAT_SIGNATURES: readonly CaptureFormatSignature[] = [
     },
   },
 ];
+
+/**
+ * Nombres de las entidades soportadas hoy, derivados de
+ * `CAPTURE_FORMAT_SIGNATURES` — para mensajes al usuario (intro del diálogo,
+ * error de "formato no reconocido") que se actualizan solos al agregar una
+ * firma nueva, en vez de quedar hardcodeados a "Santander ni MAF" en varios
+ * archivos.
+ */
+export const CAPTURE_FORMAT_FINANCIERA_NAMES: readonly string[] = CAPTURE_FORMAT_SIGNATURES.map(
+  (signature) => signature.financiera,
+);
 
 /**
  * Devuelve la firma cuyas columnas distintivas están TODAS presentes en el

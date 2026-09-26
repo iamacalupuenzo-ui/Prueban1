@@ -26,7 +26,7 @@ const STATUS_OPTIONS: readonly { value: FleetMapStatusFilter; label: string }[] 
 const FINANCIERA_OPTIONS: readonly { value: FleetMapFinancieraFilter; label: string }[] = [
   { value: 'all', label: 'Todas las financieras' },
   { value: 'Santander', label: 'Santander' },
-  { value: 'Mapfre', label: 'Mapfre' },
+  { value: 'MAF', label: 'MAF' },
 ];
 const TYPE_ICONS: Record<FleetUnitType, IconName> = { car: 'car', truck: 'truck', bus: 'bus', motorcycle: 'bike' };
 
@@ -174,25 +174,44 @@ export class FleetMapSearchComponent implements AfterViewInit {
     this.openActionMenuUnitId.set(null);
   }
   protected actionItems(unit: FleetUnit): DropdownItem[] {
-    return [
+    const following = this.state.isFollowing(unit.id);
+    const items: DropdownItem[] = [
       this.state.isPinned(unit.id)
         ? { label: 'Desfijar', value: 'unpin', icon: 'star' }
         : { label: 'Fijar', value: 'pin', icon: 'star' },
       { label: 'Ver bitácora', value: 'bitacora', icon: 'file-text' },
-      // Distinto de Bitácora (que trae posiciones, eventos y datos de
-      // orden): esto solo centra el mapa en la unidad, en su propia
-      // pestaña, para quien únicamente quiere ver cómo se mueve — a pedido
-      // de Enzo (23 sep. 2026).
-      { label: 'Seguir unidad', value: 'follow', icon: 'eye' },
+    ];
+    // Distinto de Bitácora (que trae posiciones, eventos y datos de
+    // orden): abre/reabre una pestaña "Seguimiento N", una grilla de
+    // mini-mapas para hasta MAX_UNITS_PER_FOLLOWING_GROUP unidades a la vez
+    // (ver following-view.component.ts) — mismo patrón de pestaña que
+    // Bitácora, no un chip flotando sobre el mapa principal (esa primera
+    // versión, 2026-09-25, quedaba chica con más de una unidad). El
+    // usuario puede tener varios grupos de seguimiento en paralelo: "Seguir
+    // unidad" entra al grupo activo/último con espacio (o crea uno si
+    // ninguno tiene), y "Seguir en un grupo nuevo" fuerza uno nuevo aunque
+    // ya exista uno con espacio (pedido explícito, 2026-09-25).
+    if (following) {
+      items.push({ label: 'Dejar de seguir', value: 'unfollow', icon: 'eye-off' });
+    } else {
+      items.push({ label: 'Seguir unidad', value: 'follow', icon: 'eye' });
+      if (this.state.hasFollowingGroupWithRoom()) {
+        items.push({ label: 'Seguir en un grupo nuevo', value: 'follow-new-group', icon: 'plus' });
+      }
+    }
+    items.push(
       { label: 'Centrar en mapa', value: 'center', icon: 'locate-fixed' },
       { label: 'Copiar ubicación', value: 'copy', icon: 'copy' },
-    ];
+    );
+    return items;
   }
   protected runAction(unit: FleetUnit, item: DropdownItem): void {
     this.closeActionMenu();
     if (item.value === 'pin' || item.value === 'unpin') this.state.togglePin(unit.id);
     if (item.value === 'bitacora') this.state.openBitacora(unit);
     if (item.value === 'follow') this.state.openFollow(unit);
+    if (item.value === 'follow-new-group') this.state.openNewFollowingGroup(unit);
+    if (item.value === 'unfollow') this.state.stopFollowing(unit.id);
     if (item.value === 'center') this.state.selectUnit(unit);
     if (item.value === 'copy') void this.state.copyUnitLocation(unit);
   }

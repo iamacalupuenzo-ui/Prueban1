@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@iamacalupuenzo-ui/comsatel-ds';
 import type { ResolveConflictChoice } from '../../../core/orders/mock-capture-orders.service';
+import { CAPTURE_FORMAT_FINANCIERA_NAMES } from '../../../core/orders/capture-order-formats';
 import { CaptureOrdersService } from '../capture-orders.service';
 
 /**
@@ -89,9 +90,9 @@ import { CaptureOrdersService } from '../capture-orders.service';
         @if (state.bulkUploadStage() === 'select') {
           <div class="bulk-upload-intro">
             <p>
-              Carga un archivo con órdenes de captura de Santander o Mapfre. El sistema detecta
-              automáticamente a qué proveedor pertenece por la estructura de sus columnas — no hace
-              falta elegirlo ni seguir una plantilla fija.
+              Carga un archivo con órdenes de captura de {{ knownFinancierasText }}. El sistema
+              detecta automáticamente a qué proveedor pertenece por la estructura de sus columnas —
+              no hace falta elegirlo ni seguir una plantilla fija.
             </p>
           </div>
           <input
@@ -223,6 +224,8 @@ import { CaptureOrdersService } from '../capture-orders.service';
 })
 export class CaptureOrderBulkUploadDialogComponent {
   protected readonly state = inject(CaptureOrdersService);
+  /** Deriva de `CAPTURE_FORMAT_SIGNATURES` — agregar una entidad nueva ahí actualiza este texto solo, sin tocar el diálogo. */
+  protected readonly knownFinancierasText = CAPTURE_FORMAT_FINANCIERA_NAMES.join(' o ');
 
   protected onConflictChoice(orderId: string, value: string): void {
     this.state.setBulkConflictChoice(orderId, value as ResolveConflictChoice);

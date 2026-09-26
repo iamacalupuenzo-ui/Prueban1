@@ -1,6 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, ElementRef, inject, signal } from '@angular/core';
 import { Icon } from '@iamacalupuenzo-ui/comsatel-ds';
-import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
+import { FleetMapService, type FleetMapTabKey, type FollowingGroup } from './fleet-map.service';
 
 /**
  * Pestañas para navegar entre el Mapa y las bitácoras abiertas — acotadas a
@@ -13,8 +13,8 @@ import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
   selector: 'app-fleet-map-tabs',
   imports: [Icon],
   template: `
-    @if (state.openBitacoraUnitIds().length || state.openFollowUnitIds().length) {
-      <div class="fleet-map-tabs" role="tablist" aria-label="Mapa, bitácoras y seguimientos abiertos">
+    @if (state.openBitacoraUnitIds().length || state.followingGroups().length) {
+      <div class="fleet-map-tabs" role="tablist" aria-label="Mapa, bitácoras y seguimiento abiertos">
         <button
           type="button"
           class="fleet-map-tabs__tab fleet-map-tabs__tab--map"
@@ -25,6 +25,47 @@ import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
         >
           <cs-icon name="map" [size]="14" aria-hidden="true" />Mapa
         </button>
+        @for (group of state.followingGroups(); track group.id; let i = $index) {
+          <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === followTabKey(group.id)" [class.is-active]="state.activeTab() === followTabKey(group.id)">
+            @if (editingGroupId() === group.id) {
+              <span class="fleet-map-tabs__label fleet-map-tabs__label--editing">
+                <cs-icon name="eye" [size]="12" aria-hidden="true" />
+                <input
+                  class="fleet-map-tabs__rename-input"
+                  type="text"
+                  aria-label="Nombre del grupo de seguimiento"
+                  [value]="editingName()"
+                  [style.width.ch]="editingName().length + 1"
+                  (input)="editingName.set($any($event.target).value)"
+                  (blur)="commitRename(group.id)"
+                  (keydown.enter)="($any($event.target)).blur()"
+                  (keydown.escape)="cancelRename()"
+                  (click)="$event.stopPropagation()"
+                  (dblclick)="$event.stopPropagation()"
+                />
+                <span>({{ group.unitIds.length }})</span>
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="fleet-map-tabs__label"
+                [attr.aria-label]="'Ver ' + followingGroupLabel(group, i) + '. Doble clic para renombrar'"
+                (click)="state.switchTab(followTabKey(group.id))"
+                (dblclick)="startRename(group, i)"
+              >
+                <cs-icon name="eye" [size]="12" aria-hidden="true" />{{ followingGroupLabel(group, i) }} ({{ group.unitIds.length }})
+              </button>
+            }
+            <button
+              type="button"
+              class="fleet-map-tabs__close"
+              [attr.aria-label]="'Cerrar ' + followingGroupLabel(group, i)"
+              (click)="state.requestCloseFollowingGroup(group.id)"
+            >
+              <cs-icon name="x" [size]="14" aria-hidden="true" />
+            </button>
+          </span>
+        }
         @for (unit of state.openBitacoraUnits(); track unit.id) {
           <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === bitacoraTabKey(unit.id)" [class.is-active]="state.activeTab() === bitacoraTabKey(unit.id)">
             <button type="button" class="fleet-map-tabs__label" [attr.aria-label]="'Bitácora de ' + unit.vehicleCode" (click)="state.switchTab(bitacoraTabKey(unit.id))">
@@ -36,22 +77,7 @@ import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
               [attr.aria-label]="'Cerrar bitácora de ' + unit.vehicleCode"
               (click)="state.closeBitacoraTab(unit.id)"
             >
-              <cs-icon name="x" [size]="12" aria-hidden="true" />
-            </button>
-          </span>
-        }
-        @for (unit of state.openFollowUnits(); track unit.id) {
-          <span class="fleet-map-tabs__tab" role="tab" [attr.aria-selected]="state.activeTab() === followTabKey(unit.id)" [class.is-active]="state.activeTab() === followTabKey(unit.id)">
-            <button type="button" class="fleet-map-tabs__label" [attr.aria-label]="'Siguiendo a ' + unit.vehicleCode" (click)="state.switchTab(followTabKey(unit.id))">
-              <cs-icon name="eye" [size]="12" aria-hidden="true" />{{ unit.vehicleCode }}
-            </button>
-            <button
-              type="button"
-              class="fleet-map-tabs__close"
-              [attr.aria-label]="'Dejar de seguir a ' + unit.vehicleCode"
-              (click)="state.closeFollowTab(unit.id)"
-            >
-              <cs-icon name="x" [size]="12" aria-hidden="true" />
+              <cs-icon name="x" [size]="14" aria-hidden="true" />
             </button>
           </span>
         }
@@ -117,8 +143,8 @@ import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
         padding-inline: var(--layout-padding-xs) var(--layout-padding-sm);
         border: 0;
         background: transparent;
-        color: inherit;
-        opacity: 0.6;
+        color: var(--color-text-danger-default);
+        opacity: 0.7;
         cursor: pointer;
       }
       .fleet-map-tabs__close:hover {
@@ -128,18 +154,77 @@ import { FleetMapService, type FleetMapTabKey } from './fleet-map.service';
         outline: var(--layout-border-thick) solid var(--color-border-focused);
         outline-offset: -2px;
       }
+      /* Mismo contenedor/tipografía que .fleet-map-tabs__label (icono +
+         texto + contador en la misma fila, misma altura de pestaña) — solo
+         el nombre se vuelve editable, no se reemplaza toda la fila por una
+         caja de formulario ajena al resto de la barra. */
+      .fleet-map-tabs__label--editing {
+        color: var(--color-text-brand-default);
+      }
+      .fleet-map-tabs__rename-input {
+        min-inline-size: 12px;
+        max-inline-size: 160px;
+        padding: 0;
+        border: 0;
+        border-bottom: var(--layout-border-thin) solid currentColor;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+      }
+      .fleet-map-tabs__rename-input:focus-visible {
+        outline: none;
+      }
     `,
   ],
 })
 export class FleetMapTabsComponent {
   protected readonly state = inject(FleetMapService);
+  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
 
   // Helpers tipados para la plantilla: la concatenación de strings (`'bitacora:' + unit.id`)
   // no se angosta al tipo plantilla `FleetMapTabKey` que espera `switchTab`.
   protected bitacoraTabKey(unitId: string): FleetMapTabKey {
     return `bitacora:${unitId}`;
   }
-  protected followTabKey(unitId: string): FleetMapTabKey {
-    return `follow:${unitId}`;
+
+  protected followTabKey(groupId: string): FleetMapTabKey {
+    return `follow:${groupId}`;
+  }
+
+  /** "Seguimiento N" por posición, salvo que el usuario le haya puesto un nombre propio. */
+  protected followingGroupLabel(group: FollowingGroup, index: number): string {
+    return group.name || `Seguimiento ${index + 1}`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Renombrar un grupo de seguimiento con doble clic en su pestaña — mismo
+  // patrón que renombrar una hoja de Excel (pedido explícito). Estado
+  // puramente de UI (no vive en el servicio): solo importa mientras el
+  // usuario está escribiendo, nadie más lo necesita.
+  // ---------------------------------------------------------------------
+  protected readonly editingGroupId = signal<string | null>(null);
+  protected readonly editingName = signal('');
+
+  protected startRename(group: FollowingGroup, index: number): void {
+    this.editingGroupId.set(group.id);
+    this.editingName.set(group.name || `Seguimiento ${index + 1}`);
+    // El input recién existe en el DOM después de que Angular repinta el
+    // `@if` de esta misma vuelta — un `setTimeout` (no un `requestAnimationFrame`
+    // suelto) espera a que ese repintado ya haya ocurrido antes de buscarlo.
+    setTimeout(() => {
+      const input = this.elementRef.nativeElement.querySelector<HTMLInputElement>('.fleet-map-tabs__rename-input');
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  protected commitRename(groupId: string): void {
+    if (this.editingGroupId() !== groupId) return;
+    this.state.renameFollowingGroup(groupId, this.editingName());
+    this.editingGroupId.set(null);
+  }
+
+  protected cancelRename(): void {
+    this.editingGroupId.set(null);
   }
 }
